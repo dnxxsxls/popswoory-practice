@@ -14,7 +14,7 @@ const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "날짜 형식이 올
 
 const createSchema = z.object({
   title: z.string().trim().min(1, "연습 이름을 입력해 주세요.").max(30),
-  dates: z.array(dateSchema).min(1, "날짜를 하나 이상 골라주세요.").max(21),
+  dates: z.array(dateSchema).min(1, "날짜를 하나 이상 골라주세요.").max(31),
   durationMin: z.number().int().min(30).max(600),
 });
 
