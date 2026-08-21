@@ -127,6 +127,7 @@ export function JoinForm() {
 
   return (
     <form
+      autoComplete="off"
       onSubmit={isName ? submitName : submitPin}
       className="mx-auto flex min-h-dvh max-w-md flex-col px-6 pt-[calc(env(safe-area-inset-top)+4.5rem)]"
     >
@@ -188,28 +189,36 @@ export function JoinForm() {
             >
               <input
                 autoFocus
-                type={showPin ? "text" : "password"}
+                type="text"
                 inputMode="numeric"
+                pattern="[0-9]*"
                 autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                name="pin-code"
                 maxLength={4}
                 value={pin}
                 onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
                 placeholder="••••"
-                className={`${inputClass} tracking-[0.4em]`}
+                className={`${inputClass} tracking-[0.4em] ${showPin ? "" : "pin-mask"}`}
               />
             </UnderlineField>
 
             {!isLogin ? (
               <UnderlineField label="PIN 다시 입력">
                 <input
-                  type={showPin ? "text" : "password"}
+                  type="text"
                   inputMode="numeric"
+                  pattern="[0-9]*"
                   autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  name="pin-code-confirm"
                   maxLength={4}
                   value={pin2}
                   onChange={(e) => setPin2(e.target.value.replace(/\D/g, "").slice(0, 4))}
                   placeholder="••••"
-                  className={`${inputClass} tracking-[0.4em]`}
+                  className={`${inputClass} tracking-[0.4em] ${showPin ? "" : "pin-mask"}`}
                 />
               </UnderlineField>
             ) : null}

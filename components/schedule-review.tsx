@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { analyzeMyTimetable, saveMyTimetableBlocks } from "@/actions/timetable";
 import { EditableScheduleGrid, type EditBlock } from "./editable-schedule-grid";
 import { OriginalImage } from "./original-image";
+import { AnalyzingCard } from "./analyzing-card";
 import type { ScheduleBlock } from "@/lib/store";
 import { Button, Card, ErrorText } from "./ui";
 
@@ -37,6 +38,7 @@ export function ScheduleReview({
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [saving, startSave] = useTransition();
+  const [saved, setSaved] = useState(false);
 
   // 저장된 블록이 없고 이미지가 있으면 들어오자마자 분석
   useEffect(() => {
@@ -78,23 +80,73 @@ export function ScheduleReview({
         setError(res.message);
         return;
       }
-      router.replace("/timetable");
+      // 바로 이동하지 않고, 다음에 뭘 하면 되는지 알려준다
+      setSaved(true);
       router.refresh();
     });
   }
 
-  if (analyzing) {
+  if (saved) {
     return (
-      <Card>
-        <div className="flex items-center gap-3">
-          <span className="h-6 w-6 animate-spin rounded-full border-[3px] border-line border-t-accent" />
-          <div>
-            <p className="text-[17px] font-bold">시간표를 읽는 중…</p>
-            <p className="mt-1 text-[15px] text-muted">10초쯤 걸려요.</p>
+      <>
+        <div className="fixed inset-0 z-30 bg-black/40" />
+        <div className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md rounded-t-[28px] bg-surface p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] shadow-[0_-8px_32px_rgba(0,0,0,0.12)]">
+          <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-line" />
+
+          <div className="flex justify-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-accent">
+              <svg
+                width="30"
+                height="30"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-accent-fg"
+                aria-hidden="true"
+              >
+                <path d="M5 12.5l4.5 4.5L19 7.5" />
+              </svg>
+            </span>
           </div>
+
+          <h2 className="mt-5 text-center text-[22px] font-extrabold">시간표 등록 완료!</h2>
+          <p className="mt-2 text-center text-[15px] leading-relaxed text-muted">
+            이제 팀원들과 겹치는 공강 시간을
+            <br />
+            확인할 수 있어요.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              router.replace("/free");
+              router.refresh();
+            }}
+            className="mt-6 h-14 w-full rounded-2xl bg-accent text-[17px] font-bold text-accent-fg"
+          >
+            공강표 보러가기
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              router.replace("/timetable");
+              router.refresh();
+            }}
+            className="mt-2 h-12 w-full text-[15px] font-semibold text-muted"
+          >
+            내 시간표 보기
+          </button>
         </div>
-      </Card>
+      </>
     );
+  }
+
+  if (analyzing) {
+    return <AnalyzingCard />;
   }
 
   const classCount = blocks.filter((b) => b.kind === "class").length;
