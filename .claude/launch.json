@@ -4,7 +4,19 @@
     {
       "name": "timetable-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "timetable-serve",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "serve"
+      ],
       "port": 3000
     }
   ]
