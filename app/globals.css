@@ -1,26 +1,100 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-press: var(--accent-press);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --font-sans: var(--font-korean);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  --font-korean: "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+    "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+
+  /* 토스 계열 팔레트 — 회색 배경 위에 흰 카드, 파란 강조 */
+  --bg: #f2f4f6;
+  --surface: #ffffff;
+  --surface-2: #f2f4f6;
+  --line: #e5e8eb;
+  --fg: #191f28;
+  --fg-2: #4e5968;
+  --muted: #8b95a1;
+  --accent: #3182f6;
+  --accent-press: #1b64da;
+  --accent-fg: #ffffff;
+  --accent-soft: #e8f3ff;
+  --danger: #f04452;
+  --success: #15c47e;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg: #17171c;
+    --surface: #1e1e24;
+    --surface-2: #26262e;
+    --line: #2e2e37;
+    --fg: #f2f4f6;
+    --fg-2: #c2c8d0;
+    --muted: #8b95a1;
+    --accent: #4d94ff;
+    --accent-press: #3182f6;
+    --accent-fg: #ffffff;
+    --accent-soft: #1c2b44;
+    --danger: #ff6b74;
+    --success: #2fd18e;
   }
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-korean);
+  letter-spacing: -0.01em;
+  overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 제목은 굵고 촘촘하게 */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.03em;
+}
+
+/* iOS 에서 입력 시 자동 확대 방지 */
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  font-size: max(16px, 1em);
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* 누를 때 살짝 눌리는 느낌 */
+button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+button {
+  transition: transform 0.08s ease, background-color 0.12s ease, opacity 0.12s ease;
 }

@@ -1,0 +1,9 @@
+{
+  "name": "Timetable — 약속 잡기",
+  "short_name": "Timetable",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f7f8",
+  "theme_color": "#f7f7f8",
+  "icons": []
+}
