@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireMember } from "@/lib/guard";
-import { getActiveSchedule, listActiveSchedules, listEvents, listMembers } from "@/lib/store";
+import { getActiveSchedule, getMember, listActiveSchedules, listEvents, listMembers } from "@/lib/store";
+import { HomeTutorial, type TimetableState } from "@/components/home-tutorial";
 import { formatDate } from "@/lib/candidates";
 import { formatMin } from "@/components/schedule-grid";
 import { AppShell } from "@/components/app-shell";
@@ -8,11 +9,12 @@ import { Badge, Card } from "@/components/ui";
 
 export default async function HomePage() {
   const me = await requireMember();
-  const [mine, members, schedules, events] = await Promise.all([
+  const [mine, members, schedules, events, meRecord] = await Promise.all([
     getActiveSchedule(me.memberId),
     listMembers(),
     listActiveSchedules(),
     listEvents(),
+    getMember(me.memberId),
   ]);
 
   const upcoming = events.filter((e) => e.status === "confirmed");
@@ -21,8 +23,42 @@ export default async function HomePage() {
   const registered = new Set(schedules.filter((s) => s.blocks.length > 0).map((s) => s.memberId));
   const missing = members.filter((m) => !registered.has(m.id));
 
+  const timetable: TimetableState =
+    !mine ? "none" : mine.blocks.length > 0 ? "parsed" : "uploaded";
+
+  if (!meRecord?.tutorialDoneAt) {
+    return (
+      <AppShell
+        title={
+          <>
+            안녕하세요!
+            <br />
+            {me.displayName} 님
+          </>
+        }
+        subtitle="시작하기 전에 확인해 주세요"
+      >
+        <HomeTutorial
+          initialGroupNo={meRecord?.groupNo ?? null}
+          timetable={timetable}
+          memberCount={members.length}
+          readyCount={registered.size}
+        />
+      </AppShell>
+    );
+  }
+
   return (
-    <AppShell title={`안녕하세요, ${me.displayName} 님`} subtitle="우리 모임">
+    <AppShell
+      title={
+        <>
+          안녕하세요!
+          <br />
+          {me.displayName} 님
+        </>
+      }
+      subtitle="우리 모임"
+    >
       {mine && mine.blocks.length > 0 ? (
         <Card>
           <div className="flex items-start justify-between gap-3">
@@ -96,13 +132,11 @@ export default async function HomePage() {
           />
         </div>
 
-        {missing.length > 0 ? (
-          <p className="mt-3 text-[15px] text-muted">
-            아직 안 올린 사람: {missing.map((m) => m.displayName).join(", ")}
-          </p>
-        ) : (
-          <p className="mt-3 text-[15px] text-muted">전원 등록됐어요.</p>
-        )}
+        <p className="mt-3 text-[15px] text-muted">
+          {missing.length === 0
+            ? "전원 등록됐어요."
+            : `${missing.length}명이 아직 등록하지 않았어요.`}
+        </p>
 
         <Link href="/members" className="mt-4 inline-block text-[15px] font-bold text-accent">
           멤버 보기 →

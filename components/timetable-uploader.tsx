@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, ErrorText } from "./ui";
+import { EverytimeGuide } from "./everytime-guide";
 
 type Rect = { x: number; y: number; w: number; h: number }; // 0~1 정규화
 type Handle = "move" | "nw" | "ne" | "sw" | "se";
@@ -10,8 +11,8 @@ type Handle = "move" | "nw" | "ne" | "sw" | "se";
 const MIN = 0.12; // 크롭 박스 최소 크기 (비율)
 const MAX_EDGE = 1400; // 저장 시 장변 상한 (px). 격자 인식엔 충분하고 분석이 빨라진다
 
-/** 상단 헤더(이름·학교가 보이는 영역)를 기본으로 제외한 초기 크롭 */
-const INITIAL: Rect = { x: 0, y: 0.08, w: 1, h: 0.92 };
+/** 처음엔 이미지 전체를 잡는다. 잘라낼 부분은 사용자가 직접 정한다. */
+const INITIAL: Rect = { x: 0, y: 0, w: 1, h: 1 };
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -203,6 +204,8 @@ export function TimetableUploader({ mode }: { mode: "onboarding" | "replace" }) 
         />
 
         <ErrorText>{error}</ErrorText>
+
+        <EverytimeGuide />
 
         <p className="rounded-2xl bg-surface px-5 py-4 text-[13px] leading-relaxed text-muted">
           다음 화면에서 <span className="font-medium text-fg">이름·학교가 보이는 부분을 잘라낼 수

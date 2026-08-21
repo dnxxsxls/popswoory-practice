@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 
-/** 올린 원본 이미지. 세로가 길어 대조가 불편하므로 접을 수 있게 한다. */
+/**
+ * 올린 원본 이미지. 세로가 길어 결과를 아래로 밀어내므로 기본은 접어둔다.
+ * 대조가 필요할 때만 펼친다.
+ */
 export function OriginalImage() {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="overflow-hidden rounded-2xl bg-surface">

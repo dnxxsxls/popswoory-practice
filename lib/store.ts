@@ -21,6 +21,10 @@ export type Member = {
   isActive: boolean;
   createdAt: string;
   lastLoginAt: string | null;
+  /** 가을발표회 조 번호 (튜토리얼 1단계에서 고른다) */
+  groupNo: number | null;
+  /** 홈 튜토리얼을 끝낸 시각 */
+  tutorialDoneAt: string | null;
 };
 
 /** class = 시간표에서 읽은 수업 / personal = 사용자가 직접 추가한 개인 불가 시간(알바·통학 등) */
@@ -90,7 +94,12 @@ async function read(): Promise<Data> {
     const raw = await fs.readFile(DB_FILE, "utf8");
     const parsed = JSON.parse(raw) as Partial<Data>;
     return {
-      members: parsed.members ?? [],
+      // 예전 데이터 호환
+      members: (parsed.members ?? []).map((m) => ({
+        ...m,
+        groupNo: m.groupNo ?? null,
+        tutorialDoneAt: m.tutorialDoneAt ?? null,
+      })),
       events: parsed.events ?? [],
       responses: parsed.responses ?? [],
       schedules: (parsed.schedules ?? []).map((s) => ({
@@ -146,6 +155,8 @@ export async function createMember(displayName: string, pinHash: string): Promis
     isActive: true,
     createdAt: new Date().toISOString(),
     lastLoginAt: new Date().toISOString(),
+    groupNo: null,
+    tutorialDoneAt: null,
   };
   data.members.push(member);
   await write(data);
@@ -320,5 +331,23 @@ export async function cancelEvent(eventId: string): Promise<void> {
   const event = data.events.find((e) => e.id === eventId);
   if (!event) return;
   event.status = "cancelled";
+  await write(data);
+}
+
+// ── 홈 튜토리얼 ────────────────────────────────────────────
+
+export async function setMemberGroup(memberId: string, groupNo: number): Promise<void> {
+  const data = await read();
+  const member = data.members.find((m) => m.id === memberId);
+  if (!member) return;
+  member.groupNo = groupNo;
+  await write(data);
+}
+
+export async function completeTutorial(memberId: string): Promise<void> {
+  const data = await read();
+  const member = data.members.find((m) => m.id === memberId);
+  if (!member) return;
+  member.tutorialDoneAt = new Date().toISOString();
   await write(data);
 }

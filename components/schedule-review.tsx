@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { analyzeMyTimetable, saveMyTimetableBlocks } from "@/actions/timetable";
 import { EditableScheduleGrid, type EditBlock } from "./editable-schedule-grid";
+import { OriginalImage } from "./original-image";
 import type { ScheduleBlock } from "@/lib/store";
 import { Button, Card, ErrorText } from "./ui";
 
@@ -149,6 +150,8 @@ export function ScheduleReview({
             addKind="class"
             editableKind="class"
           />
+
+          {hasImage ? <OriginalImage /> : null}
 
           {note ? <p className="px-1 text-[13px] text-muted">메모: {note}</p> : null}
 

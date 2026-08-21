@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { requireMember } from "@/lib/guard";
 import { getActiveSchedule } from "@/lib/store";
 import { AppShell } from "@/components/app-shell";
-import { OriginalImage } from "@/components/original-image";
 import { ScheduleReview } from "@/components/schedule-review";
 
 export default async function TimetableReviewPage() {
@@ -20,8 +19,6 @@ export default async function TimetableReviewPage() {
       title={alreadyConfirmed ? "시간표 고치기" : "시간표 확인"}
       subtitle={alreadyConfirmed ? "확정된 내용을 수정합니다" : "읽어온 결과를 확인해 주세요"}
     >
-      {hasImage ? <OriginalImage /> : null}
-
       <ScheduleReview initial={schedule.blocks} hasImage={hasImage} />
 
       <Link
