@@ -185,8 +185,17 @@ export function ScheduleReview({
         <>
           <Card className="!p-4">
             <p className="text-[15px] leading-relaxed">
-              읽어온 수업이 <span className="font-semibold">{classCount}개</span>예요. 원본과
-              비교해서 <span className="font-semibold">다른 부분만</span> 눌러 고쳐주세요.
+              {hasImage ? (
+                <>
+                  읽어온 수업이 <span className="font-semibold">{classCount}개</span>예요. 원본과
+                  비교해서 <span className="font-semibold">다른 부분만</span> 눌러 고쳐주세요.
+                </>
+              ) : (
+                <>
+                  빈 칸을 눌러 <span className="font-semibold">수업 시간을 직접</span> 넣어주세요.
+                  블록을 누르면 고칠 수 있어요.
+                </>
+              )}
               {lowCount > 0 ? (
                 <>
                   {" "}

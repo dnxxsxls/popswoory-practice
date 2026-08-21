@@ -16,8 +16,14 @@ export default async function TimetableReviewPage() {
 
   return (
     <AppShell
-      title={alreadyConfirmed ? "시간표 고치기" : "시간표 확인"}
-      subtitle={alreadyConfirmed ? "확정된 내용을 수정합니다" : "읽어온 결과를 확인해 주세요"}
+      title={alreadyConfirmed ? "시간표 고치기" : hasImage ? "시간표 확인" : "시간표 직접 입력"}
+      subtitle={
+        alreadyConfirmed
+          ? "확정된 내용을 수정합니다"
+          : hasImage
+            ? "읽어온 결과를 확인해 주세요"
+            : "빈 칸을 눌러 수업을 넣어주세요"
+      }
     >
       <ScheduleReview initial={schedule.blocks} hasImage={hasImage} />
 

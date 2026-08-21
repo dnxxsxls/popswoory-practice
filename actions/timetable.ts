@@ -2,7 +2,12 @@
 
 import { z } from "zod";
 import { requireMember } from "@/lib/guard";
-import { getActiveSchedule, saveScheduleBlocks, scheduleImagePath } from "@/lib/store";
+import {
+  createManualSchedule,
+  getActiveSchedule,
+  saveScheduleBlocks,
+  scheduleImagePath,
+} from "@/lib/store";
 import { analyzeTimetableImage, type VisionBlock } from "@/lib/vision";
 
 export type AnalyzeResult =
@@ -56,5 +61,12 @@ export async function saveMyTimetableBlocks(
   const saved = await saveScheduleBlocks(me.memberId, parsed.data);
   if (!saved) return { ok: false, message: "시간표를 찾지 못했어요." };
 
+  return { ok: true };
+}
+
+/** 이미지 없이 직접 입력으로 시작한다. */
+export async function startManualTimetable(): Promise<{ ok: true }> {
+  const me = await requireMember();
+  await createManualSchedule(me.memberId);
   return { ok: true };
 }

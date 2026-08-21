@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { startManualTimetable } from "@/actions/timetable";
 import { Button, ErrorText } from "./ui";
 import { EverytimeGuide } from "./everytime-guide";
 
@@ -16,7 +17,14 @@ const INITIAL: Rect = { x: 0, y: 0, w: 1, h: 1 };
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
-export function TimetableUploader({ mode }: { mode: "onboarding" | "replace" }) {
+export function TimetableUploader({
+  mode,
+  /** 최초 등록 화면에서는 직접 입력 경로를 숨겨 화면을 단순하게 둔다 */
+  allowManual = true,
+}: {
+  mode: "onboarding" | "replace";
+  allowManual?: boolean;
+}) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -27,6 +35,7 @@ export function TimetableUploader({ mode }: { mode: "onboarding" | "replace" }) 
   const [rect, setRect] = useState<Rect>(INITIAL);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [startingManual, startManual] = useTransition();
 
   useEffect(() => {
     return () => {
@@ -172,26 +181,28 @@ export function TimetableUploader({ mode }: { mode: "onboarding" | "replace" }) 
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="flex w-full flex-col items-center gap-3 rounded-2xl bg-surface px-6 py-14 text-center"
+          className="dash-border flex aspect-square w-full flex-col items-center justify-center gap-4 rounded-2xl px-6 text-center"
         >
-          <svg
-            width="34"
-            height="34"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="text-accent"
-            aria-hidden="true"
-          >
-            <path d="M12 16V4m0 0L8 8m4-4 4 4" />
-            <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
-          </svg>
+          <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-surface">
+            <svg
+              width="30"
+              height="30"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-accent"
+              aria-hidden="true"
+            >
+              <path d="M12 16V4m0 0L8 8m4-4 4 4" />
+              <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+            </svg>
+          </span>
           <span className="text-[17px] font-bold">시간표 캡처 올리기</span>
           <span className="text-[15px] text-muted">
-            에브리타임 시간표를 캡처해서 선택해 주세요
+            에브리타임 시간표를 캡처해서 업로드해 주세요
           </span>
         </button>
 
@@ -207,10 +218,22 @@ export function TimetableUploader({ mode }: { mode: "onboarding" | "replace" }) 
 
         <EverytimeGuide />
 
-        <p className="rounded-2xl bg-surface px-5 py-4 text-[13px] leading-relaxed text-muted">
-          다음 화면에서 <span className="font-medium text-fg">이름·학교가 보이는 부분을 잘라낼 수
-          있어요.</span> 시간표 격자만 남기면 충분합니다.
-        </p>
+        {allowManual ? (
+          <button
+            type="button"
+            disabled={startingManual}
+            onClick={() =>
+              startManual(async () => {
+                await startManualTimetable();
+                router.replace("/timetable/review");
+                router.refresh();
+              })
+            }
+            className="w-full py-2 text-[15px] font-semibold text-muted disabled:opacity-50"
+          >
+            {startingManual ? "여는 중…" : "에타 시간표가 없어요 · 직접 입력할게요"}
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -223,18 +246,31 @@ export function TimetableUploader({ mode }: { mode: "onboarding" | "replace" }) 
     height: `${rect.h * 100}%`,
   };
 
-  const handles: { key: Handle; className: string }[] = [
-    { key: "nw", className: "-left-2 -top-2 cursor-nwse-resize" },
-    { key: "ne", className: "-right-2 -top-2 cursor-nesw-resize" },
-    { key: "sw", className: "-bottom-2 -left-2 cursor-nesw-resize" },
-    { key: "se", className: "-bottom-2 -right-2 cursor-nwse-resize" },
+  // 핸들은 크롭 영역 '안쪽' 모서리에 둔다. 바깥으로 내밀면 컨테이너에 잘려 반쪽만 보인다.
+  // wrap 은 44x44 터치 영역, svg 는 그 안에서 크롭 모서리에 딱 붙인다
+  const handles: { key: Handle; wrap: string; svg: string; rotate: string }[] = [
+    { key: "nw", wrap: "left-0 top-0 cursor-nwse-resize", svg: "left-0 top-0", rotate: "rotate-0" },
+    { key: "ne", wrap: "right-0 top-0 cursor-nesw-resize", svg: "right-0 top-0", rotate: "rotate-90" },
+    {
+      key: "se",
+      wrap: "bottom-0 right-0 cursor-nwse-resize",
+      svg: "bottom-0 right-0",
+      rotate: "rotate-180",
+    },
+    {
+      key: "sw",
+      wrap: "bottom-0 left-0 cursor-nesw-resize",
+      svg: "bottom-0 left-0",
+      rotate: "-rotate-90",
+    },
   ];
 
   return (
     <div className="space-y-4">
-      <p className="px-1 text-[15px] text-muted">
-        남길 영역을 조절해 주세요. 모서리를 끌면 크기가 바뀌어요.
-      </p>
+      <div className="px-1">
+        <p className="text-[17px] font-bold">남길 영역을 정해주세요</p>
+        <p className="mt-1 text-[15px] text-muted">모서리를 끌면 크기가 바뀌어요.</p>
+      </div>
 
       <div
         ref={boxRef}
@@ -257,7 +293,7 @@ export function TimetableUploader({ mode }: { mode: "onboarding" | "replace" }) 
         />
 
         <div
-          className="absolute cursor-move border-2 border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.55)]"
+          className="absolute cursor-move border border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]"
           style={style}
           onPointerDown={(e) => startDrag("move", e)}
         >
@@ -265,8 +301,24 @@ export function TimetableUploader({ mode }: { mode: "onboarding" | "replace" }) 
             <span
               key={h.key}
               onPointerDown={(e) => startDrag(h.key, e)}
-              className={`absolute h-6 w-6 rounded-full border-2 border-white bg-accent ${h.className}`}
-            />
+              aria-hidden="true"
+              className={`absolute h-11 w-11 ${h.wrap}`}
+            >
+              <svg
+                width="28"
+                height="28"
+                viewBox="0 0 28 28"
+                fill="none"
+                className={`absolute text-accent ${h.svg} ${h.rotate}`}
+              >
+                <path
+                  d="M25 3.5H12.5C7.53 3.5 3.5 7.53 3.5 12.5V25"
+                  stroke="currentColor"
+                  strokeWidth="5"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
           ))}
         </div>
       </div>
@@ -277,7 +329,7 @@ export function TimetableUploader({ mode }: { mode: "onboarding" | "replace" }) 
         <Button
           type="button"
           variant="secondary"
-          className="flex-1"
+          className="flex-1 !bg-surface"
           disabled={busy}
           onClick={() => {
             setSrc(null);
@@ -286,7 +338,7 @@ export function TimetableUploader({ mode }: { mode: "onboarding" | "replace" }) 
         >
           다시 고르기
         </Button>
-        <Button type="button" className="flex-[2]" disabled={busy} onClick={upload}>
+        <Button type="button" className="flex-1" disabled={busy} onClick={upload}>
           {busy ? "저장 중…" : mode === "onboarding" ? "이걸로 등록" : "새 시간표로 교체"}
         </Button>
       </div>

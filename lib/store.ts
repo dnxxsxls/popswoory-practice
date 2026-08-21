@@ -220,6 +220,30 @@ export function scheduleImagePath(schedule: Schedule): string | null {
   return schedule.imageFile ? path.join(UPLOAD_DIR, schedule.imageFile) : null;
 }
 
+/** 에타 시간표 이미지가 없는 사람을 위해, 빈 시간표를 만들어 직접 입력하게 한다. */
+export async function createManualSchedule(memberId: string): Promise<Schedule> {
+  const data = await read();
+  for (const s of data.schedules) {
+    if (s.memberId === memberId) s.isActive = false;
+  }
+  const schedule: Schedule = {
+    id: randomUUID(),
+    memberId,
+    label: "내 시간표",
+    source: "manual",
+    status: "manual",
+    imageFile: null,
+    imageWidth: null,
+    imageHeight: null,
+    blocks: [],
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  };
+  data.schedules.push(schedule);
+  await write(data);
+  return schedule;
+}
+
 export async function readScheduleImage(schedule: Schedule): Promise<Buffer | null> {
   if (!schedule.imageFile) return null;
   try {

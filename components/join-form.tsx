@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { checkName, signIn, signUp } from "@/actions/auth";
 import { randomNickname } from "@/lib/nickname";
 import { ErrorText } from "./ui";
@@ -79,6 +79,24 @@ export function JoinForm() {
   const [pin2, setPin2] = useState("");
   const [error, setError] = useState("");
   const [showPin, setShowPin] = useState(false);
+  const pinRef = useRef<HTMLInputElement>(null);
+  const pin2Ref = useRef<HTMLInputElement>(null);
+
+  /**
+   * WebKit 은 -webkit-text-security 가 바뀌어도 이미 그려둔 글자를 갱신하지 않는다.
+   * 그래서 마지막에 친 글자만 반대로 보이는(***4 → 123*) 현상이 생긴다.
+   * 값을 다시 넣어 강제로 다시 그리게 한다. 포커스와 커서는 유지한다.
+   */
+  useEffect(() => {
+    for (const el of [pinRef.current, pin2Ref.current]) {
+      if (!el || !el.value) continue;
+      const value = el.value;
+      const focused = document.activeElement === el;
+      el.value = "";
+      el.value = value;
+      if (focused) el.setSelectionRange(value.length, value.length);
+    }
+  }, [showPin]);
 
   function submitName(e: React.FormEvent) {
     e.preventDefault();
@@ -188,6 +206,7 @@ export function JoinForm() {
               }
             >
               <input
+                ref={pinRef}
                 autoFocus
                 type="text"
                 inputMode="numeric"
@@ -207,6 +226,7 @@ export function JoinForm() {
             {!isLogin ? (
               <UnderlineField label="PIN 다시 입력">
                 <input
+                  ref={pin2Ref}
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
