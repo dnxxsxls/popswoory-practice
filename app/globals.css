@@ -21,7 +21,7 @@
   --font-korean: "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
     "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
 
-  /* 토스 계열 팔레트 — 회색 배경 위에 흰 카드, 파란 강조 */
+  /* 팝스우리 브랜드 팔레트 (마스코트 '우리' 가이드 기준) */
   --bg: #f2f4f6;
   --surface: #ffffff;
   --surface-2: #f2f4f6;
@@ -29,10 +29,10 @@
   --fg: #191f28;
   --fg-2: #4e5968;
   --muted: #8b95a1;
-  --accent: #3182f6;
-  --accent-press: #1b64da;
+  --accent: #2563eb;
+  --accent-press: #1d4ed8;
   --accent-fg: #ffffff;
-  --accent-soft: #e8f3ff;
+  --accent-soft: #e8f0fe;
   --danger: #f04452;
   --success: #15c47e;
 }
@@ -46,10 +46,10 @@
     --fg: #f2f4f6;
     --fg-2: #c2c8d0;
     --muted: #8b95a1;
-    --accent: #4d94ff;
-    --accent-press: #3182f6;
-    --accent-fg: #ffffff;
-    --accent-soft: #1c2b44;
+    --accent: #7aa7ff;
+    --accent-press: #a5c4ff;
+    --accent-fg: #10182a;
+    --accent-soft: #1b2a4a;
     --danger: #ff6b74;
     --success: #2fd18e;
   }
