@@ -36,6 +36,7 @@ export function OnboardingShell({
   footer,
   onBack,
   backDisabled = false,
+  topBack,
   mascot = false,
 }: {
   step: OnboardingStep;
@@ -47,12 +48,16 @@ export function OnboardingShell({
   /** 이전 단계로. 되돌아갈 곳이 있는 화면에만 넘긴다 */
   onBack?: () => void;
   backDisabled?: boolean;
+  /** 첫 화면에서만 쓰는 상단 아이콘 — 가입 화면으로 되돌아간다 */
+  topBack?: ReactNode;
   /** 첫 화면처럼 여백이 남는 단계에서 마스코트를 세운다 */
   mascot?: boolean;
 }) {
   return (
     <div className="relative mx-auto flex h-dvh max-w-md flex-col overflow-hidden px-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-[calc(env(safe-area-inset-top)+1.25rem)]">
       <ProgressBar done={stepNumber(step)} />
+
+      {topBack ? <div className="mt-3 -ml-2">{topBack}</div> : null}
 
       {/*
         마스코트는 스크롤 영역 밖에 두어 화면 아래에 고정된다. 내용이 길어져
@@ -80,7 +85,7 @@ export function OnboardingShell({
       ) : null}
 
       {/* 넘칠 때만 스크롤된다. min-h-0 이 없으면 flex 자식이 줄지 않아 넘침이 밖으로 샌다. */}
-      <div className="relative z-10 min-h-0 flex-1 overflow-y-auto pt-9">
+      <div className={`relative z-10 min-h-0 flex-1 overflow-y-auto ${topBack ? "pt-4" : "pt-9"}`}>
         <h1 className="whitespace-pre-line break-keep text-[26px] font-extrabold leading-tight">
           {title}
         </h1>

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { signOut } from "@/actions/auth";
 import { chooseGroups } from "@/actions/onboarding";
 import type { GroupRole } from "@/lib/store";
 import { OnboardingShell } from "./onboarding-shell";
@@ -23,6 +24,18 @@ export function OnboardingRoleGroup({ displayName }: { displayName: string }) {
   const sorted = sortGroupNos(value.groupNos);
   // 역할을 고르기 전에는 조 선택을 보여주지 않는다 — 한 번에 하나씩만 묻는다.
   const askingRole = value.role === null;
+
+  /**
+   * 첫 화면에서만 뒤로. 로그아웃하고 가입 화면으로 보낸다 — 거기서 다른 닉네임으로
+   * 다시 시작할 수 있다. 계정은 지우지 않는다(같은 이름으로 다시 로그인하면 그대로다).
+   */
+  function backToJoin() {
+    start(async () => {
+      await signOut();
+      router.replace("/join");
+      router.refresh();
+    });
+  }
 
   function submit() {
     if (!isRoleGroupReady(value)) return;
@@ -54,6 +67,29 @@ export function OnboardingRoleGroup({ displayName }: { displayName: string }) {
         }
         subtitle="가을발표회에서 맡은 자리를 골라주세요."
         mascot
+        topBack={
+          <button
+            type="button"
+            onClick={backToJoin}
+            disabled={pending}
+            aria-label="가입 화면으로 돌아가기"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-fg-2 disabled:opacity-40"
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M15 5 8 12l7 7" />
+            </svg>
+          </button>
+        }
       >
         <Card>
           <RoleButtons value={value} onChange={setValue} />
