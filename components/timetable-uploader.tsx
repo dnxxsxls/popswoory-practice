@@ -17,14 +17,7 @@ const INITIAL: Rect = { x: 0, y: 0, w: 1, h: 1 };
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
-export function TimetableUploader({
-  mode,
-  /** 최초 등록 화면에서는 직접 입력 경로를 숨겨 화면을 단순하게 둔다 */
-  allowManual = true,
-}: {
-  mode: "onboarding" | "replace";
-  allowManual?: boolean;
-}) {
+export function TimetableUploader({ mode }: { mode: "onboarding" | "replace" }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -218,22 +211,20 @@ export function TimetableUploader({
 
         <EverytimeGuide />
 
-        {allowManual ? (
-          <button
-            type="button"
-            disabled={startingManual}
-            onClick={() =>
-              startManual(async () => {
-                await startManualTimetable();
-                router.replace("/timetable/review");
-                router.refresh();
-              })
-            }
-            className="w-full py-2 text-[15px] font-semibold text-muted disabled:opacity-50"
-          >
-            {startingManual ? "여는 중…" : "에타 시간표가 없어요 · 직접 입력할게요"}
-          </button>
-        ) : null}
+        <button
+          type="button"
+          disabled={startingManual}
+          onClick={() =>
+            startManual(async () => {
+              await startManualTimetable();
+              router.replace("/timetable/review");
+              router.refresh();
+            })
+          }
+          className="w-full py-2 text-[15px] font-semibold text-muted disabled:opacity-50"
+        >
+          {startingManual ? "여는 중…" : "에타 시간표가 없어요 · 직접 입력할게요"}
+        </button>
       </div>
     );
   }

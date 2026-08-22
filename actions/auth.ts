@@ -56,7 +56,7 @@ export async function signIn(rawName: string, rawPin: string): Promise<AuthResul
   return { ok: true, next: "/" };
 }
 
-/** 신규 가입 — 끝나면 시간표 등록 단계로 */
+/** 신규 가입 — 끝나면 홈으로. 시간표 등록은 홈의 필수 튜토리얼이 받는다. */
 export async function signUp(rawName: string, rawPin: string): Promise<AuthResult> {
   const name = nameSchema.safeParse(rawName);
   const pin = pinSchema.safeParse(rawPin);
@@ -76,7 +76,7 @@ export async function signUp(rawName: string, rawPin: string): Promise<AuthResul
     role: member.role,
     ver: member.sessionVersion,
   });
-  return { ok: true, next: "/onboarding/timetable" };
+  return { ok: true, next: "/" };
 }
 
 export async function signOut() {

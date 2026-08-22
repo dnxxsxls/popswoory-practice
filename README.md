@@ -30,13 +30,12 @@ npm run claude:status
 
 | 화면 | 경로 | 상태 |
 |---|---|---|
-| 가입 / 로그인 | `/join` | ✅ 이름 + PIN 4자리 |
-| 시간표 등록 (온보딩) | `/onboarding/timetable` | ✅ 업로드 → 크롭 → 저장 |
+| 가입 / 로그인 | `/join` | ✅ 이름 + PIN 4자리 → 바로 홈 |
 | 시간표 확인·수정 | `/timetable/review` | ✅ 자동 분석 → 격자 미리보기 → 수정 → 확정 |
 | 홈 | `/` | ✅ 내 등록 상태 + 모임 등록 현황 |
 | 내 시간표 | `/timetable` | ✅ 주간 격자 / 수정 / 새로 올리기 |
 | 우리 공강표 | `/free` | ✅ 전원 겹치는 공강 계산 + 히트맵 |
-| 멤버 | `/members` | ✅ 목록 + 등록 여부 |
+| 우리 조 | `/members` | ✅ 내 조 명단 + 내 정보 수정 |
 | 약속 잡기 | — | ⬜ 다음 단계 |
 
 ### 시간표 자동 분석
@@ -128,9 +127,8 @@ launchctl load ~/Library/LaunchAgents/com.popswoory.serve.plist
 ```
 app/            화면 + API 라우트
   join/         가입·로그인
-  onboarding/   시간표 등록 (가입 3단계)
   timetable/    내 시간표
-  members/      멤버
+  members/      우리 조 명단
   api/timetable 업로드 / 이미지 서빙(본인만)
 actions/        서버 액션 (인증)
 components/     UI
