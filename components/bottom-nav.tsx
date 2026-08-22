@@ -3,19 +3,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+/**
+ * 아이콘은 디자인에서 받은 PNG 를 mask 로 쓴다.
+ * 원본은 회색/파랑 두 벌로 왔지만 모양이 완전히 같아서 한 벌만 두고,
+ * 색은 currentColor 로 입힌다. 이러면 다크모드 토큰도 그대로 따라간다.
+ * ratio 는 원본 PNG 의 가로/세로 픽셀.
+ */
 const items = [
-  { href: "/", label: "홈", icon: "M3 10.5 12 3l9 7.5M5.5 9.5V20h13V9.5" },
+  { href: "/", label: "홈", icon: "/nav/home.png", ratio: "198 / 177", box: "h-[21px] max-w-[26px]" },
   {
     href: "/free",
     label: "공강표",
-    icon: "M4 5h16v15H4zM4 9.5h16M9 5v15M14 5v15M9.5 13.5l1.8 1.8 3.2-3.4",
+    icon: "/nav/free.png",
+    ratio: "236 / 177",
+    box: "h-[21px] max-w-[26px]",
   },
-  { href: "/timetable", label: "내 시간표", icon: "M7 3v3M17 3v3M4 8.5h16M4 5h16v15H4z" },
-  {
-    href: "/members",
-    label: "멤버",
-    icon: "M4 19c0-3 3-4.5 5-4.5S14 16 14 19M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6M16 19c0-2 1-3.2 2.2-3.8M16.5 11.5a2.5 2.5 0 1 0 0-5",
-  },
+  { href: "/timetable", label: "내 시간표", icon: "/nav/timetable.png", ratio: "187 / 174", box: "h-[21px] max-w-[26px]" },
+  // 멤버는 원본이 가로로 가장 길어서 같은 높이로 두면 혼자 커 보인다
+  { href: "/members", label: "멤버", icon: "/nav/members.png", ratio: "238 / 159", box: "h-[18px] max-w-[24px]" },
 ];
 
 export function BottomNav() {
@@ -32,23 +37,23 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               aria-current={active ? "page" : undefined}
-              className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-bold ${
+              className={`flex flex-1 flex-col items-center gap-1.5 pb-3 pt-[18px] text-[11px] font-bold ${
                 active ? "text-accent" : "text-muted"
               }`}
             >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={active ? 2 : 1.6}
-                strokeLinecap="round"
-                strokeLinejoin="round"
+              {/*
+               * 원본이 여백 없이 잘려 나와서 가로폭이 제각각이다. 높이와 최대 폭을
+               * 아이콘별로 잡아(box) 넷이 비슷한 크기로 보이게 맞춘다.
+               */}
+              <span
+                className={`nav-icon ${item.box}`}
+                style={{
+                  aspectRatio: item.ratio,
+                  maskImage: `url(${item.icon})`,
+                  WebkitMaskImage: `url(${item.icon})`,
+                }}
                 aria-hidden="true"
-              >
-                <path d={item.icon} />
-              </svg>
+              />
               {item.label}
             </Link>
           );

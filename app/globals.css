@@ -131,3 +131,81 @@ button:not(:disabled):active {
 button {
   transition: transform 0.08s ease, background-color 0.12s ease, opacity 0.12s ease;
 }
+
+/*
+ * 시간표 분석 대기 화면의 3D 로딩.
+ * 달력은 제자리에서 떠 있고(float), 돋보기는 달력 오른쪽 아래를 원형으로 돈다.
+ * 원운동은 [중심점 → 회전 → 반지름만큼 이동 → 역회전] 4겹으로 만든다.
+ * 역회전이 없으면 돋보기 자체가 같이 팽이처럼 돌아버린다.
+ */
+@keyframes loader-float {
+  0%,
+  100% {
+    transform: translateY(-3px) rotate(-0.7deg);
+  }
+  50% {
+    transform: translateY(3px) rotate(0.7deg);
+  }
+}
+
+@keyframes loader-shadow {
+  0%,
+  100% {
+    transform: scaleX(0.93);
+    opacity: 0.42;
+  }
+  50% {
+    transform: scaleX(1);
+    opacity: 0.52;
+  }
+}
+
+@keyframes loader-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes loader-orbit-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+.loader-float {
+  animation: loader-float 3.2s ease-in-out infinite;
+}
+
+.loader-shadow {
+  animation: loader-shadow 3.2s ease-in-out infinite;
+}
+
+.loader-orbit {
+  animation: loader-orbit 4s linear infinite;
+}
+
+/* 돋보기가 궤도를 도는 동안 기울기를 유지하도록 같은 주기로 되돌린다 */
+.loader-orbit-reverse {
+  animation: loader-orbit-reverse 4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader-float,
+  .loader-shadow,
+  .loader-orbit,
+  .loader-orbit-reverse {
+    animation: none;
+  }
+}
+
+/* 하단 탭 아이콘 — PNG 를 마스크로 쓰고 색은 currentColor 로 입힌다 */
+.nav-icon {
+  display: block;
+  background-color: currentColor;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}

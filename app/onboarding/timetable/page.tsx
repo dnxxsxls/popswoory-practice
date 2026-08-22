@@ -19,7 +19,8 @@ export default async function OnboardingTimetablePage() {
         </p>
       </div>
 
-      <div className="flex flex-1 items-center py-5">
+      {/* 가운데 정렬하되 아래 여백을 더 줘서 업로드 박스가 살짝 위로 오게 한다 */}
+      <div className="flex flex-1 items-center pb-16 pt-2">
         <div className="w-full">
           <TimetableUploader mode="onboarding" allowManual={false} />
         </div>
