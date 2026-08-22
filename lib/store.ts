@@ -380,6 +380,15 @@ export async function cancelEvent(eventId: string): Promise<void> {
 
 // ── 홈 튜토리얼 ────────────────────────────────────────────
 
+/** 표시명은 로그인 아이디이기도 하다. 중복 확인은 호출하는 쪽에서 한다. */
+export async function renameMember(memberId: string, displayName: string): Promise<void> {
+  const data = await read();
+  const member = data.members.find((m) => m.id === memberId);
+  if (!member) return;
+  member.displayName = displayName.trim();
+  await write(data);
+}
+
 export async function setMemberGroups(
   memberId: string,
   groupRole: GroupRole,

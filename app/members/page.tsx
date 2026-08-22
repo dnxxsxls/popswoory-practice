@@ -4,6 +4,7 @@ import { getMember, listActiveSchedules, listMembers } from "@/lib/store";
 import { AppShell } from "@/components/app-shell";
 import { RosterRow, type RosterMember } from "@/components/group-roster";
 import { GroupTabs, type GroupRoster } from "@/components/group-tabs";
+import { ProfileEdit } from "@/components/profile-edit";
 import { Card } from "@/components/ui";
 
 export default async function MembersPage() {
@@ -62,7 +63,14 @@ export default async function MembersPage() {
       {/* 내 프로필은 명단에서 빼서 위에 따로 둔다. 매번 들어오는 탭이라
           내 상태부터 눈에 들어오는 편이 낫다. */}
       <Card>
-        <p className="text-[13px] font-bold text-accent">내 정보</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[13px] font-bold text-accent">내 정보</p>
+          <ProfileEdit
+            displayName={mine.displayName}
+            groupRole={mine.mentor ? "mentor" : "member"}
+            groupNos={myGroupNos}
+          />
+        </div>
         <div className="mt-2">
           <RosterRow member={mine} />
         </div>
