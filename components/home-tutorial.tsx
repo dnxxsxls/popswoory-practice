@@ -5,14 +5,13 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { chooseGroup, finishTutorial } from "@/actions/onboarding";
 import { GROUPS, findGroup } from "@/lib/groups";
-import { Avatar, Badge, Button, Card, ErrorText } from "./ui";
+import { Badge, Button, Card, ErrorText } from "./ui";
 
 export type TimetableState = "none" | "uploaded" | "parsed";
 
 export type TutorialMember = {
   id: string;
   displayName: string;
-  color: string;
   groupNo: number | null;
   /** 시간표를 읽어서 블록까지 확정한 상태 */
   ready: boolean;
@@ -42,6 +41,14 @@ export function HomeTutorial({ initialGroupNo, timetable, members, meId }: Props
     picked === null
       ? []
       : members.filter((m) => (m.id === meId ? picked : m.groupNo) === picked);
+
+  function isMentor(m: TutorialMember) {
+    return group?.mentors.includes(m.displayName) ?? false;
+  }
+
+  // 멘토 먼저, 그다음 조원. mates 는 이미 가입순이고 sort 는 안정 정렬이라
+  // 멘토끼리 · 조원끼리의 가입 순서는 그대로 남는다.
+  const roster = [...mates].sort((a, b) => Number(isMentor(b)) - Number(isMentor(a)));
 
   function confirmGroup() {
     if (picked === null) return;
@@ -161,43 +168,33 @@ export function HomeTutorial({ initialGroupNo, timetable, members, meId }: Props
             <p className="text-[15px] font-semibold text-muted">{mates.length}명 참여</p>
           </div>
 
-          {group ? (
-            <div className="mt-3 rounded-xl bg-accent-soft px-4 py-3">
-              <p className="text-[13px] font-bold text-accent">멘토</p>
-              <p className="mt-0.5 text-[15px] font-bold">{group.mentors.join(" · ")}</p>
-            </div>
-          ) : null}
-
           <ul className="mt-4 space-y-3">
-            {mates.map((m) => {
-              const isMentor = group?.mentors.includes(m.displayName) ?? false;
-              return (
-                <li key={m.id} className="flex items-center gap-3">
-                  <Avatar name={m.displayName} color={m.color} size={36} />
-                  <div className="flex min-w-0 flex-1 items-center gap-1.5">
-                    <span className="truncate text-[15px] font-bold">{m.displayName}</span>
-                    {m.id === meId ? (
-                      <span className="shrink-0 text-[13px] font-medium text-muted">(나)</span>
-                    ) : null}
-                    <Badge tone={isMentor ? "outlineAccent" : "outline"}>
-                      {isMentor ? "멘토" : "조원"}
-                    </Badge>
-                  </div>
-                  {m.ready ? <Badge tone="accent">시간표 등록</Badge> : <Badge>미등록</Badge>}
-                </li>
-              );
-            })}
+            {roster.map((m) => (
+              <li key={m.id} className="flex items-center gap-3">
+                {/* 멘토·조원 모두 두 글자라 폭이 같아 이름 시작점이 자동으로 맞는다 */}
+                <Badge tone={isMentor(m) ? "outlineAccent" : "outline"}>
+                  {isMentor(m) ? "멘토" : "조원"}
+                </Badge>
+                <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                  <span className="truncate text-[15px] font-bold">{m.displayName}</span>
+                  {m.id === meId ? (
+                    <span className="shrink-0 text-[13px] font-medium text-muted">(나)</span>
+                  ) : null}
+                </div>
+                {m.ready ? <Badge tone="accent">등록 완료</Badge> : <Badge>미등록</Badge>}
+              </li>
+            ))}
           </ul>
 
           <p className="mt-4 text-[15px] leading-relaxed text-muted">
-            {mates.length <= 1
-              ? "아직 이 조에서는 혼자예요. 다른 조원이 가입하면 여기에 표시됩니다."
+            {roster.length <= 1
+              ? "아직 이 조에는 나뿐이에요. 다른 조원이 가입하면 여기에 표시됩니다."
               : "조원이 더 가입하면 여기에 함께 표시돼요."}
           </p>
 
           <div className="mt-4">
             <Button full disabled={pending} onClick={done}>
-              시작하기
+              연습 일정 잡기
             </Button>
           </div>
         </Card>

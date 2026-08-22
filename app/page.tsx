@@ -45,7 +45,6 @@ export default async function HomePage() {
           members={members.map((m) => ({
             id: m.id,
             displayName: m.displayName,
-            color: m.color,
             groupNo: m.groupNo,
             ready: registered.has(m.id),
           }))}

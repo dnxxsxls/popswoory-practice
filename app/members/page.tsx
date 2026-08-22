@@ -29,7 +29,7 @@ export default async function MembersPage() {
               </div>
 
               {registered.has(m.id) ? (
-                <Badge tone="accent">시간표 등록</Badge>
+                <Badge tone="accent">등록 완료</Badge>
               ) : (
                 <Badge>미등록</Badge>
               )}
