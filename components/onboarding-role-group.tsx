@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { chooseGroups } from "@/actions/onboarding";
 import type { GroupRole } from "@/lib/store";
-import { OnboardingBack, OnboardingShell } from "./onboarding-shell";
+import { OnboardingShell } from "./onboarding-shell";
 import {
   GroupButtons,
   RoleButtons,
@@ -65,12 +65,8 @@ export function OnboardingRoleGroup({ displayName }: { displayName: string }) {
   return (
     <OnboardingShell
       step="group"
-      back={
-        <OnboardingBack
-          onClick={() => setValue({ role: null, groupNos: [] })}
-          disabled={pending}
-        />
-      }
+      onBack={() => setValue({ role: null, groupNos: [] })}
+      backDisabled={pending}
       title={value.role === "mentor" ? "맡고 있는 조를\n모두 골라주세요" : "어느 조인가요?"}
       subtitle={
         value.role === "mentor"

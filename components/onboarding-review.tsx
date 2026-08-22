@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { undoTimetable } from "@/actions/onboarding";
 import type { OnboardingStep } from "@/lib/onboarding";
-import { OnboardingBack, OnboardingShell } from "./onboarding-shell";
+import { OnboardingShell } from "./onboarding-shell";
 import { ScheduleReview } from "./schedule-review";
 import type { ScheduleBlock } from "@/lib/store";
 
@@ -42,7 +42,7 @@ export function OnboardingReview({
   hasImage: boolean;
 }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [, start] = useTransition();
   const [phase, setPhase] = useState<Phase>(
     initial.length === 0 && hasImage ? "analyze" : "confirm",
   );
@@ -63,9 +63,6 @@ export function OnboardingReview({
       step={copy.step}
       title={copy.title}
       subtitle={copy.subtitle}
-      back={
-        phase === "confirm" ? <OnboardingBack onClick={goBack} disabled={pending} /> : null
-      }
     >
       <ScheduleReview
         initial={initial}
@@ -73,6 +70,7 @@ export function OnboardingReview({
         doneHref="/onboarding/group"
         showStepLabel={false}
         onPhaseChange={setPhase}
+        onBackFromFirst={goBack}
       />
     </OnboardingShell>
   );

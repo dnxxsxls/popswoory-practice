@@ -9,6 +9,8 @@ import {
   PERSONAL_COLOR,
   SLOT_PX,
   gridBounds,
+  collapsedEndHour,
+  ExpandHours,
   blockEdges,
 } from "./schedule-grid";
 import { formatMin } from "@/lib/time";
@@ -53,7 +55,12 @@ export function EditableScheduleGrid({ blocks, onChange, addKind, editableKind }
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
 
-  const { dayCount, startHour, endHour } = gridBounds(blocks);
+  const { dayCount, startHour, endHour: fullEnd } = gridBounds(blocks);
+  // 읽기 격자와 같은 규칙 — 기본은 18시까지, 늦은 일정이 있으면 그만큼 늘어난다.
+  const [expanded, setExpanded] = useState(false);
+  const collapsed = collapsedEndHour(blocks, fullEnd);
+  const canExpand = collapsed < fullEnd;
+  const endHour = expanded || !canExpand ? fullEnd : collapsed;
   const slotsPerDay = (endHour - startHour) * 2;
   const spanMin = (endHour - startHour) * 60;
   const dayBlocksOf = (weekday: number) => blocks.filter((b) => b.weekday === weekday);
@@ -306,6 +313,13 @@ export function EditableScheduleGrid({ blocks, onChange, addKind, editableKind }
             })}
           </>
         )}
+      />
+
+      <ExpandHours
+        expanded={expanded}
+        onToggle={() => setExpanded((v) => !v)}
+        shownEnd={endHour}
+        canExpand={canExpand}
       />
 
       <p className="mt-2.5 px-1 text-[13px] leading-relaxed text-muted">

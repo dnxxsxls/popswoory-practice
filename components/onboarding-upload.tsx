@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { undoGroups } from "@/actions/onboarding";
-import { OnboardingBack, OnboardingShell } from "./onboarding-shell";
+import { OnboardingShell } from "./onboarding-shell";
 import { TimetableUploader } from "./timetable-uploader";
 
 /** 올리기와 크롭은 같은 단계지만 묻는 것이 다르다. 제목만 갈아 끼운다. */
@@ -35,7 +35,8 @@ export function OnboardingUpload() {
       step="upload"
       title={copy.title}
       subtitle={copy.subtitle}
-      back={phase === "upload" ? <OnboardingBack onClick={goBack} disabled={pending} /> : null}
+      onBack={phase === "upload" ? goBack : undefined}
+      backDisabled={pending}
     >
       <TimetableUploader
         mode="onboarding"

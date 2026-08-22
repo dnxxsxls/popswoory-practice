@@ -30,12 +30,15 @@ export function ScheduleReview({
   hasImage,
   doneHref,
   onPhaseChange,
+  onBackFromFirst,
   showStepLabel = true,
 }: {
   initial: ScheduleBlock[];
   hasImage: boolean;
   /** 지금 어느 단계인지 밖에 알린다 — 온보딩 진행바와 제목이 이 값을 따라간다 */
   onPhaseChange?: (phase: "analyze" | Step) => void;
+  /** 첫 단계에서 더 뒤로 갈 곳이 있으면 넘긴다 — 이전 버튼이 생긴다 */
+  onBackFromFirst?: () => void;
   /** 온보딩은 셸이 단계를 표시하므로 자체 라벨을 끈다 */
   showStepLabel?: boolean;
   /**
@@ -216,9 +219,19 @@ export function ScheduleReview({
             editableKind="class"
           />
 
-          <Button full onClick={() => setStep("personal")}>
-            {classCount > 0 ? "수업 시간이 맞아요" : "수업 없이 진행"}
-          </Button>
+          <div className="flex gap-3">
+            {onBackFromFirst ? (
+              <Button variant="secondary" className="flex-1" onClick={onBackFromFirst}>
+                이전
+              </Button>
+            ) : null}
+            <Button
+              className={onBackFromFirst ? "flex-[2]" : "w-full"}
+              onClick={() => setStep("personal")}
+            >
+              {classCount > 0 ? "수업 시간이 맞아요" : "수업 없이 진행"}
+            </Button>
+          </div>
         </>
       ) : null}
 

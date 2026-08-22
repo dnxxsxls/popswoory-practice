@@ -127,17 +127,66 @@ export function GridFrame({
 /** 수업은 대개 이 시각이면 끝난다. 뒤가 비어 있으면 접어둔다. */
 const COLLAPSED_END_HOUR = 18;
 
+/**
+ * 접었을 때의 끝 시각. 블록은 하나도 가리지 않고 비어 있는 꼬리만 잘라낸다.
+ * 읽기 전용 격자와 편집 격자가 같은 규칙을 쓰도록 여기서만 정한다.
+ */
+export function collapsedEndHour(
+  blocks: { endMin: number }[],
+  fullEnd: number,
+): number {
+  const last = blocks.reduce(
+    (acc, b) => Math.max(acc, Math.ceil(b.endMin / 60)),
+    COLLAPSED_END_HOUR,
+  );
+  return Math.min(fullEnd, last);
+}
+
+/** 늦은 시간대를 펼치고 접는 버튼. 접을 게 없으면 아무것도 그리지 않는다. */
+export function ExpandHours({
+  expanded,
+  onToggle,
+  shownEnd,
+  canExpand,
+}: {
+  expanded: boolean;
+  onToggle: () => void;
+  shownEnd: number;
+  canExpand: boolean;
+}) {
+  if (!canExpand) return null;
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={expanded}
+      className="flex h-10 w-full items-center justify-center gap-1.5 text-[13px] font-bold text-muted"
+    >
+      {expanded ? "접기" : `${shownEnd}시 이후 보기`}
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+        className={expanded ? "rotate-180" : ""}
+      >
+        <path d="M6 9.5 12 15.5 18 9.5" />
+      </svg>
+    </button>
+  );
+}
+
 /** 읽기 전용 시간표. 늦은 시간대는 접어두고 필요한 사람만 펼친다. */
 export function ScheduleGrid({ blocks }: { blocks: GridBlock[] }) {
   const [expanded, setExpanded] = useState(false);
   const { dayCount, startHour, endHour: fullEnd } = gridBounds(blocks);
 
-  // 접었을 때도 블록은 하나도 가리지 않는다 — 비어 있는 꼬리만 잘라낸다.
-  const lastBlockHour = blocks.reduce(
-    (acc, b) => Math.max(acc, Math.ceil(b.endMin / 60)),
-    COLLAPSED_END_HOUR,
-  );
-  const collapsedEnd = Math.min(fullEnd, lastBlockHour);
+  const collapsedEnd = collapsedEndHour(blocks, fullEnd);
   const canExpand = collapsedEnd < fullEnd;
   const endHour = expanded || !canExpand ? fullEnd : collapsedEnd;
   const spanMin = (endHour - startHour) * 60;
@@ -171,30 +220,12 @@ export function ScheduleGrid({ blocks }: { blocks: GridBlock[] }) {
         }}
       />
 
-      {canExpand ? (
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          aria-expanded={expanded}
-          className="flex h-10 w-full items-center justify-center gap-1.5 text-[13px] font-bold text-muted"
-        >
-          {expanded ? "접기" : `${endHour}시 이후 보기`}
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-            className={expanded ? "rotate-180" : ""}
-          >
-            <path d="M6 9.5 12 15.5 18 9.5" />
-          </svg>
-        </button>
-      ) : null}
+      <ExpandHours
+        expanded={expanded}
+        onToggle={() => setExpanded((v) => !v)}
+        shownEnd={endHour}
+        canExpand={canExpand}
+      />
     </div>
   );
 }

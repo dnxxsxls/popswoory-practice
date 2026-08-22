@@ -1,33 +1,7 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { TOTAL_ONBOARDING_STEPS, stepNumber, type OnboardingStep } from "@/lib/onboarding";
-
-/** 이전 단계로. 저장된 것이 있으면 지우고 가야 가드가 다시 앞으로 밀지 않는다. */
-export function OnboardingBack({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label="이전 단계로"
-      className="-ml-2 flex h-10 w-10 items-center justify-center rounded-full text-fg-2 disabled:opacity-40"
-    >
-      <svg
-        width="22"
-        height="22"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path d="M15 5 8 12l7 7" />
-      </svg>
-    </button>
-  );
-}
+import { Button } from "./ui";
 
 /** 화면 맨 위에서 전체 과정을 보여주는 끊어진 진행바. 왼쪽부터 차오른다. */
 function ProgressBar({ done }: { done: number }) {
@@ -60,24 +34,25 @@ export function OnboardingShell({
   subtitle,
   children,
   footer,
-  back,
+  onBack,
+  backDisabled = false,
   mascot = false,
 }: {
   step: OnboardingStep;
   title: ReactNode;
   subtitle?: string;
   children?: ReactNode;
+  /** 화면 아래 주 버튼. 이전이 있으면 그 오른쪽에 붙는다 */
   footer?: ReactNode;
-  /** 이전 단계로 가는 버튼. 되돌아갈 곳이 있는 화면에만 넣는다 */
-  back?: ReactNode;
+  /** 이전 단계로. 되돌아갈 곳이 있는 화면에만 넘긴다 */
+  onBack?: () => void;
+  backDisabled?: boolean;
   /** 첫 화면처럼 여백이 남는 단계에서 마스코트를 세운다 */
   mascot?: boolean;
 }) {
   return (
     <div className="relative mx-auto flex h-dvh max-w-md flex-col overflow-hidden px-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-[calc(env(safe-area-inset-top)+1.25rem)]">
       <ProgressBar done={stepNumber(step)} />
-
-      <div className="mt-2 h-10">{back}</div>
 
       {/*
         마스코트는 스크롤 영역 밖에 두어 화면 아래에 고정된다. 내용이 길어져
@@ -105,7 +80,7 @@ export function OnboardingShell({
       ) : null}
 
       {/* 넘칠 때만 스크롤된다. min-h-0 이 없으면 flex 자식이 줄지 않아 넘침이 밖으로 샌다. */}
-      <div className="relative z-10 min-h-0 flex-1 overflow-y-auto pt-3">
+      <div className="relative z-10 min-h-0 flex-1 overflow-y-auto pt-9">
         <h1 className="whitespace-pre-line break-keep text-[26px] font-extrabold leading-tight">
           {title}
         </h1>
@@ -116,7 +91,22 @@ export function OnboardingShell({
         <div className="mt-6 pb-2">{children}</div>
       </div>
 
-      {footer ? <div className="relative z-10 mt-4">{footer}</div> : null}
+      {/* 이전은 주 버튼 왼쪽에 붙여 모든 화면에서 같은 자리에 둔다 */}
+      {footer || onBack ? (
+        <div className="relative z-10 mt-4 flex gap-3">
+          {onBack ? (
+            <Button
+              variant="secondary"
+              className="flex-1"
+              disabled={backDisabled}
+              onClick={onBack}
+            >
+              이전
+            </Button>
+          ) : null}
+          {footer ? <div className={onBack ? "flex-[2]" : "flex-1"}>{footer}</div> : null}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { finishTutorial, undoBlocks } from "@/actions/onboarding";
 import { GroupTabs, type GroupRoster } from "./group-tabs";
-import { OnboardingBack, OnboardingShell } from "./onboarding-shell";
+import { OnboardingShell } from "./onboarding-shell";
 import { Button, Card } from "./ui";
 
 export function OnboardingGroup({ groups, meId }: { groups: GroupRoster[]; meId: string }) {
@@ -31,7 +31,7 @@ export function OnboardingGroup({ groups, meId }: { groups: GroupRoster[]; meId:
   return (
     <OnboardingShell
       step="roster"
-      back={<OnboardingBack onClick={goBack} disabled={pending} />}
+      onBack={goBack}
       title={"같은 조 사람들이에요"}
       subtitle="이 조원들과 함께 연습 일정을 잡게 돼요."
       footer={
