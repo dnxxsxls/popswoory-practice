@@ -20,10 +20,13 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 export function TimetableUploader({
   mode,
   reviewHref = "/timetable/review",
+  onPhaseChange,
 }: {
   mode: "onboarding" | "replace";
   /** 업로드·직접입력 후 갈 확인 화면. 온보딩은 자기 경로를 넘긴다. */
   reviewHref?: string;
+  /** 올리기 화면인지 크롭 화면인지 밖에 알린다 — 온보딩 제목이 이 값을 따라간다 */
+  onPhaseChange?: (phase: "upload" | "crop") => void;
 }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -57,6 +60,10 @@ export function TimetableUploader({
       return URL.createObjectURL(file);
     });
   }
+
+  useEffect(() => {
+    onPhaseChange?.(src ? "crop" : "upload");
+  }, [src, onPhaseChange]);
 
   const [dragging, setDragging] = useState(false);
   const [ratio, setRatio] = useState<number | null>(null);

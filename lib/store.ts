@@ -320,6 +320,18 @@ export async function deactivateSchedule(memberId: string) {
   });
 }
 
+/** 확정한 블록을 비워 검토 단계로 되돌린다. 온보딩에서 뒤로 갈 때 쓴다. */
+export async function clearScheduleBlocks(memberId: string) {
+  return withLock(async () => {
+    const data = await read();
+    const schedule = data.schedules.find((s) => s.memberId === memberId && s.isActive);
+    if (!schedule) return;
+    schedule.blocks = [];
+    schedule.status = schedule.imageFile ? "uploaded" : "manual";
+    await write(data);
+  });
+}
+
 /** 검토를 마친 블록을 저장하고 상태를 parsed 로 올린다. */
 export async function saveScheduleBlocks(
   memberId: string,
@@ -469,6 +481,18 @@ export async function renameMember(memberId: string, displayName: string): Promi
     member.displayName = name;
     await write(data);
     return true;
+  });
+}
+
+/** 고른 역할·조를 비운다. 온보딩에서 뒤로 갈 때 쓴다. */
+export async function clearMemberGroups(memberId: string) {
+  return withLock(async () => {
+    const data = await read();
+    const member = data.members.find((m) => m.id === memberId);
+    if (!member) return;
+    member.groupRole = null;
+    member.groupNos = [];
+    await write(data);
   });
 }
 

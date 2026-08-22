@@ -2,7 +2,13 @@
 
 import { z } from "zod";
 import { requireMember } from "@/lib/guard";
-import { completeTutorial, setMemberGroups } from "@/lib/store";
+import {
+  clearMemberGroups,
+  clearScheduleBlocks,
+  completeTutorial,
+  deactivateSchedule,
+  setMemberGroups,
+} from "@/lib/store";
 
 const schema = z
   .object({
@@ -31,5 +37,27 @@ export async function chooseGroups(
 export async function finishTutorial(): Promise<{ ok: true }> {
   const me = await requireMember();
   await completeTutorial(me.memberId);
+  return { ok: true };
+}
+
+/**
+ * 온보딩에서 뒤로 갈 때 방금 저장한 것을 비운다.
+ * 비우지 않으면 가드가 "이미 끝난 단계" 로 보고 곧바로 앞으로 되돌려 보낸다.
+ */
+export async function undoGroups(): Promise<{ ok: true }> {
+  const me = await requireMember();
+  await clearMemberGroups(me.memberId);
+  return { ok: true };
+}
+
+export async function undoTimetable(): Promise<{ ok: true }> {
+  const me = await requireMember();
+  await deactivateSchedule(me.memberId);
+  return { ok: true };
+}
+
+export async function undoBlocks(): Promise<{ ok: true }> {
+  const me = await requireMember();
+  await clearScheduleBlocks(me.memberId);
   return { ok: true };
 }

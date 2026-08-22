@@ -309,8 +309,8 @@ export function EditableScheduleGrid({ blocks, onChange, addKind, editableKind }
       />
 
       <p className="mt-2.5 px-1 text-[13px] leading-relaxed text-muted">
-        빈 칸을 누르면 30분이 추가되고, 꾹 눌러 위아래로 끌면 그 시간만큼 한 번에 그려져요.
-        블록을 누르면 고칠 수 있어요.
+        빈 칸을 누르면 시간표를 추가할 수 있고, 꾹 눌러 위아래로 끌어서 시간표를 추가할 수도
+        있어요.
       </p>
 
       {editing ? (

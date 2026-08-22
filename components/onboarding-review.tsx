@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { undoTimetable } from "@/actions/onboarding";
 import type { OnboardingStep } from "@/lib/onboarding";
-import { OnboardingShell } from "./onboarding-shell";
+import { OnboardingBack, OnboardingShell } from "./onboarding-shell";
 import { ScheduleReview } from "./schedule-review";
 import type { ScheduleBlock } from "@/lib/store";
 
@@ -39,13 +41,32 @@ export function OnboardingReview({
   initial: ScheduleBlock[];
   hasImage: boolean;
 }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
   const [phase, setPhase] = useState<Phase>(
     initial.length === 0 && hasImage ? "analyze" : "confirm",
   );
   const copy = COPY[phase];
 
+  // 검토의 뒷단계(그 밖의 시간·최종)는 화면 안에서 이전 버튼이 있다.
+  // 첫 단계에서 더 뒤로 가면 올린 시간표를 버리고 업로드부터 다시 한다.
+  function goBack() {
+    start(async () => {
+      await undoTimetable();
+      router.replace("/onboarding/timetable");
+      router.refresh();
+    });
+  }
+
   return (
-    <OnboardingShell step={copy.step} title={copy.title} subtitle={copy.subtitle}>
+    <OnboardingShell
+      step={copy.step}
+      title={copy.title}
+      subtitle={copy.subtitle}
+      back={
+        phase === "confirm" ? <OnboardingBack onClick={goBack} disabled={pending} /> : null
+      }
+    >
       <ScheduleReview
         initial={initial}
         hasImage={hasImage}

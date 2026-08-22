@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { analyzeMyTimetable, saveMyTimetableBlocks } from "@/actions/timetable";
 import { EditableScheduleGrid, type EditBlock } from "./editable-schedule-grid";
+import { ScheduleGrid } from "./schedule-grid";
 import { OriginalImage } from "./original-image";
 import { AnalyzingCard } from "./analyzing-card";
 import type { ScheduleBlock } from "@/lib/store";
@@ -47,7 +48,6 @@ export function ScheduleReview({
   const [blocks, setBlocks] = useState<EditBlock[]>(() => toEdit(initial));
   const [analyzing, setAnalyzing] = useState(initial.length === 0 && hasImage);
   const [step, setStep] = useState<Step>("confirm");
-  const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [saving, startSave] = useTransition();
 
@@ -67,7 +67,6 @@ export function ScheduleReview({
       if (cancelled) return;
       if (res.ok) {
         setBlocks(toEdit(res.blocks));
-        setNote(res.note);
         setError("");
       } else {
         setError(res.message);
@@ -174,7 +173,6 @@ export function ScheduleReview({
 
   const classCount = blocks.filter((b) => b.kind === "class").length;
   const personalCount = blocks.filter((b) => b.kind === "personal").length;
-  const lowCount = blocks.filter((b) => b.kind === "class" && b.confidence === "low").length;
 
   return (
     <div className="space-y-4">
@@ -208,27 +206,8 @@ export function ScheduleReview({
 
       {step === "confirm" ? (
         <>
-          <Card className="!p-4">
-            <p className="text-[15px] leading-relaxed">
-              {hasImage ? (
-                <>
-                  읽어온 수업이 <span className="font-semibold">{classCount}개</span>예요. 원본과
-                  비교해서 <span className="font-semibold">다른 부분만</span> 눌러 고쳐주세요.
-                </>
-              ) : (
-                <>
-                  빈 칸을 눌러 <span className="font-semibold">수업 시간을 직접</span> 넣어주세요.
-                  블록을 누르면 고칠 수 있어요.
-                </>
-              )}
-              {lowCount > 0 ? (
-                <>
-                  {" "}
-                  <span className="text-danger">{lowCount}개</span>는 인식이 불확실해요(노란 테두리).
-                </>
-              ) : null}
-            </p>
-          </Card>
+          {/* 원본을 위에 둬야 눈이 위아래로 오가며 비교하기 쉽다 */}
+          {hasImage ? <OriginalImage /> : null}
 
           <EditableScheduleGrid
             blocks={blocks}
@@ -236,10 +215,6 @@ export function ScheduleReview({
             addKind="class"
             editableKind="class"
           />
-
-          {hasImage ? <OriginalImage /> : null}
-
-          {note ? <p className="px-1 text-[13px] text-muted">메모: {note}</p> : null}
 
           <Button full onClick={() => setStep("personal")}>
             {classCount > 0 ? "수업 시간이 맞아요" : "수업 없이 진행"}
@@ -249,14 +224,6 @@ export function ScheduleReview({
 
       {step === "personal" ? (
         <>
-          <Card className="!p-4">
-            <p className="text-[15px] leading-relaxed">
-              수업 말고 <span className="font-semibold">매주 안 되는 시간</span>이 또 있나요?
-              <br />
-              알바·통학·고정 약속처럼 반복되는 일정을 빈 칸을 눌러 넣어주세요.
-            </p>
-          </Card>
-
           <EditableScheduleGrid
             blocks={blocks}
             onChange={setBlocks}
@@ -277,22 +244,16 @@ export function ScheduleReview({
 
       {step === "final" ? (
         <>
-          <Card className="!p-4">
-            <p className="text-[15px] leading-relaxed">
-              수업 <span className="font-semibold">{classCount}개</span>, 그 밖에 안 되는 시간{" "}
-              <span className="font-semibold">{personalCount}개</span>. 이대로 확정하면 일정을 잡을
-              때 이 시간은 <span className="font-semibold">막힌 시간</span>으로 쓰여요.
-            </p>
-          </Card>
-
-          <EditableScheduleGrid blocks={blocks} onChange={setBlocks} addKind="personal" />
+          {/* 마지막은 확인만 한다 — 고치려면 이전으로 돌아가게 해서 실수로
+              바꾸는 일을 막는다 */}
+          <ScheduleGrid blocks={blocks} />
 
           <div className="flex items-center gap-4 px-1 text-[13px] font-medium text-muted">
             <span className="flex items-center gap-1.5">
               <span className="h-3 w-3 rounded bg-accent" /> 수업
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded bg-[#8b95a1]" /> 그 밖에 안 되는 시간
+              <span className="h-3 w-3 rounded bg-[#8b95a1]" /> 개인일정
             </span>
           </div>
 
