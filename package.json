@@ -3,14 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3100",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "claude:login": "node_modules/@anthropic-ai/claude-agent-sdk-darwin-arm64/claude auth login",
     "claude:status": "node_modules/@anthropic-ai/claude-agent-sdk-darwin-arm64/claude auth status",
-    "serve": "next start -H 0.0.0.0 -p 3000",
-    "tunnel": "cloudflared tunnel --url http://localhost:3000 --no-autoupdate"
+    "serve": "next start -H 0.0.0.0 -p 3100",
+    "tunnel": "cloudflared tunnel --url http://localhost:3100 --no-autoupdate"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.237",

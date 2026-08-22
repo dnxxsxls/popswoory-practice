@@ -45,7 +45,7 @@ async function secret(): Promise<Uint8Array> {
 
 /**
  * HTTPS 로 들어온 요청일 때만 Secure 쿠키를 쓴다.
- * 자체 호스팅(예: http://192.168.x.x:3000)에서는 Secure 쿠키가 저장되지 않아
+ * 자체 호스팅(예: http://192.168.x.x:3100)에서는 Secure 쿠키가 저장되지 않아
  * 로그인이 조용히 실패한다. 터널·리버스 프록시 뒤(https)에서는 자동으로 켜진다.
  */
 async function isHttps() {
