@@ -1,6 +1,6 @@
 {
-  "name": "연습잡스",
-  "short_name": "연습잡스",
+  "name": "우리연습",
+  "short_name": "우리연습",
   "description": "시간표를 한 번 등록해두면 다 같이 되는 연습 시간을 찾아줍니다.",
   "start_url": "/",
   "display": "standalone",

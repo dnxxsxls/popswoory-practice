@@ -34,7 +34,7 @@ export function Splash() {
         className="rounded-[30px]"
       />
 
-      <p className="mt-5 text-[24px] font-extrabold tracking-tight">연습잡스</p>
+      <p className="mt-5 text-[24px] font-extrabold tracking-tight">우리연습</p>
       <p className="mt-2 text-[14px] text-muted">팝스우리를 위한, 시간표 기반 연습 일정 도우미</p>
     </div>
   );

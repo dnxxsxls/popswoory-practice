@@ -2,10 +2,10 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "연습잡스",
+  title: "우리연습",
   description: "시간표를 한 번 등록해두고, 다 같이 되는 시간을 찾는다.",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "연습잡스" },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "우리연습" },
   robots: { index: false, follow: false },
 };
 
