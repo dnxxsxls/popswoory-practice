@@ -169,18 +169,24 @@ export function HomeTutorial({ initialGroupNo, timetable, members, meId }: Props
           ) : null}
 
           <ul className="mt-4 space-y-3">
-            {mates.map((m) => (
-              <li key={m.id} className="flex items-center gap-3">
-                <Avatar name={m.displayName} color={m.color} size={36} />
-                <p className="min-w-0 flex-1 truncate text-[15px] font-bold">
-                  {m.displayName}
-                  {m.id === meId ? (
-                    <span className="ml-1.5 text-[13px] font-medium text-muted">(나)</span>
-                  ) : null}
-                </p>
-                {m.ready ? <Badge tone="accent">시간표 등록</Badge> : <Badge>미등록</Badge>}
-              </li>
-            ))}
+            {mates.map((m) => {
+              const isMentor = group?.mentors.includes(m.displayName) ?? false;
+              return (
+                <li key={m.id} className="flex items-center gap-3">
+                  <Avatar name={m.displayName} color={m.color} size={36} />
+                  <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                    <span className="truncate text-[15px] font-bold">{m.displayName}</span>
+                    {m.id === meId ? (
+                      <span className="shrink-0 text-[13px] font-medium text-muted">(나)</span>
+                    ) : null}
+                    <Badge tone={isMentor ? "outlineAccent" : "outline"}>
+                      {isMentor ? "멘토" : "조원"}
+                    </Badge>
+                  </div>
+                  {m.ready ? <Badge tone="accent">시간표 등록</Badge> : <Badge>미등록</Badge>}
+                </li>
+              );
+            })}
           </ul>
 
           <p className="mt-4 text-[15px] leading-relaxed text-muted">

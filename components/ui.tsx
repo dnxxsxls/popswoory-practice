@@ -108,12 +108,15 @@ export function Badge({
   tone = "muted",
 }: {
   children: ReactNode;
-  tone?: "muted" | "accent" | "warn";
+  tone?: "muted" | "accent" | "warn" | "outline" | "outlineAccent";
 }) {
+  // 채움(muted·accent·warn)은 상태, 테두리(outline*)는 역할. 한 줄에 같이 놓아도 섞이지 않는다.
   const tones = {
     muted: "bg-surface-2 text-muted",
     accent: "bg-accent-soft text-accent",
     warn: "bg-surface-2 text-danger",
+    outline: "ring-1 ring-inset ring-line text-muted",
+    outlineAccent: "ring-1 ring-inset ring-accent text-accent",
   } as const;
   return (
     <span
