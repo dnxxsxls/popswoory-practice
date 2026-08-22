@@ -27,6 +27,14 @@ export function weekdayOf(date: string): number {
   return (jsDay + 6) % 7;
 }
 
+/**
+ * 오늘 날짜 "YYYY-MM-DD" (KST). 이벤트 날짜가 KST 기준이라 맞춰서 비교한다.
+ * 서버 시간대 설정에 흔들리지 않게 시간대를 못박는다.
+ */
+export function todayKst(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+}
+
 export function formatDate(date: string): string {
   const [, m, d] = date.split("-").map(Number);
   const labels = ["월", "화", "수", "목", "금", "토", "일"];

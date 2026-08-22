@@ -19,8 +19,8 @@ const items = [
     box: "h-[21px] max-w-[26px]",
   },
   { href: "/timetable", label: "내 시간표", icon: "/nav/timetable.png", ratio: "187 / 174", box: "h-[21px] max-w-[26px]" },
-  // 멤버는 원본이 가로로 가장 길어서 같은 높이로 두면 혼자 커 보인다
-  { href: "/members", label: "멤버", icon: "/nav/members.png", ratio: "238 / 159", box: "h-[18px] max-w-[24px]" },
+  // 이 아이콘은 원본이 가로로 가장 길어서 같은 높이로 두면 혼자 커 보인다
+  { href: "/members", label: "우리 조", icon: "/nav/members.png", ratio: "238 / 159", box: "h-[18px] max-w-[24px]" },
 ];
 
 export function BottomNav() {

@@ -21,11 +21,18 @@ export type Member = {
   isActive: boolean;
   createdAt: string;
   lastLoginAt: string | null;
-  /** 가을발표회 조 번호 (튜토리얼 1단계에서 고른다) */
-  groupNo: number | null;
+  /**
+   * 조에서의 역할. 위의 role 은 앱 권한(admin/member)이고 이건 가을발표회 편성이다.
+   * 멘토와 조원은 겹치지 않는다. null = 아직 안 골랐다.
+   */
+  groupRole: GroupRole | null;
+  /** 속한/맡은 조. 조원은 1개, 멘토는 1개 이상 (겸직하는 멘토가 있다) */
+  groupNos: number[];
   /** 홈 튜토리얼을 끝낸 시각 */
   tutorialDoneAt: string | null;
 };
+
+export type GroupRole = "mentor" | "member";
 
 /** class = 시간표에서 읽은 수업 / personal = 사용자가 직접 추가한 개인 불가 시간(알바·통학 등) */
 export type BlockKind = "class" | "personal";
@@ -95,11 +102,16 @@ async function read(): Promise<Data> {
     const parsed = JSON.parse(raw) as Partial<Data>;
     return {
       // 예전 데이터 호환
-      members: (parsed.members ?? []).map((m) => ({
-        ...m,
-        groupNo: m.groupNo ?? null,
-        tutorialDoneAt: m.tutorialDoneAt ?? null,
-      })),
+      members: (parsed.members ?? []).map((m) => {
+        // 예전 데이터는 조가 하나(groupNo)뿐이고 역할이 없었다.
+        const legacy = (m as { groupNo?: number | null }).groupNo;
+        return {
+          ...m,
+          groupRole: m.groupRole ?? null,
+          groupNos: m.groupNos ?? (typeof legacy === "number" ? [legacy] : []),
+          tutorialDoneAt: m.tutorialDoneAt ?? null,
+        };
+      }),
       events: parsed.events ?? [],
       responses: parsed.responses ?? [],
       schedules: (parsed.schedules ?? []).map((s) => ({
@@ -155,7 +167,8 @@ export async function createMember(displayName: string, pinHash: string): Promis
     isActive: true,
     createdAt: new Date().toISOString(),
     lastLoginAt: new Date().toISOString(),
-    groupNo: null,
+    groupRole: null,
+    groupNos: [],
     tutorialDoneAt: null,
   };
   data.members.push(member);
@@ -319,6 +332,13 @@ export async function listResponses(eventId: string): Promise<EventResponse[]> {
   return data.responses.filter((r) => r.eventId === eventId);
 }
 
+/** 여러 이벤트의 답을 한 번에. 홈에서 이벤트마다 파일을 다시 읽지 않으려고 둔다. */
+export async function listResponsesForEvents(eventIds: string[]): Promise<EventResponse[]> {
+  const data = await read();
+  const want = new Set(eventIds);
+  return data.responses.filter((r) => want.has(r.eventId));
+}
+
 /** 한 멤버의 답을 통째로 갈아끼운다. */
 export async function saveResponses(
   eventId: string,
@@ -360,11 +380,16 @@ export async function cancelEvent(eventId: string): Promise<void> {
 
 // ── 홈 튜토리얼 ────────────────────────────────────────────
 
-export async function setMemberGroup(memberId: string, groupNo: number): Promise<void> {
+export async function setMemberGroups(
+  memberId: string,
+  groupRole: GroupRole,
+  groupNos: number[],
+): Promise<void> {
   const data = await read();
   const member = data.members.find((m) => m.id === memberId);
   if (!member) return;
-  member.groupNo = groupNo;
+  member.groupRole = groupRole;
+  member.groupNos = [...new Set(groupNos)].sort((a, b) => a - b);
   await write(data);
 }
 

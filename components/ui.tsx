@@ -69,40 +69,6 @@ export function ErrorText({ children }: { children: ReactNode }) {
   return <p className="text-[15px] font-medium text-danger">{children}</p>;
 }
 
-/** 멤버 색상 토큰 → 실제 배경색. store 의 color 값과 짝을 이룬다. */
-const AVATAR_BG: Record<string, string> = {
-  indigo: "bg-indigo-500",
-  rose: "bg-rose-500",
-  amber: "bg-amber-500",
-  emerald: "bg-emerald-500",
-  sky: "bg-sky-500",
-  violet: "bg-violet-500",
-  orange: "bg-orange-500",
-  teal: "bg-teal-500",
-};
-
-export function Avatar({
-  name,
-  color,
-  size = 44,
-}: {
-  name: string;
-  color: string;
-  /** px. 명단은 44, 좁은 목록은 36 정도 */
-  size?: number;
-}) {
-  return (
-    <span
-      style={{ width: size, height: size, fontSize: size <= 36 ? 13 : 15 }}
-      className={`flex shrink-0 items-center justify-center rounded-full font-bold text-white ${
-        AVATAR_BG[color] ?? "bg-indigo-500"
-      }`}
-    >
-      {name.slice(0, 1)}
-    </span>
-  );
-}
-
 export function Badge({
   children,
   tone = "muted",
