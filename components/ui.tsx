@@ -120,3 +120,11 @@ export function EyeIcon({ open }: { open: boolean }) {
     </svg>
   );
 }
+
+/**
+ * 로딩 자리표시자. bg 와 surface-2 가 밝은 테마에서 같은 색이라
+ * 카드 안팎 어디에 놓아도 보이도록 line 색을 쓴다.
+ */
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-lg bg-line ${className}`} />;
+}
