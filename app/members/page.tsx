@@ -1,18 +1,7 @@
 import { requireMember } from "@/lib/guard";
 import { listActiveSchedules, listMembers } from "@/lib/store";
 import { AppShell } from "@/components/app-shell";
-import { Badge, Card } from "@/components/ui";
-
-const AVATAR: Record<string, string> = {
-  indigo: "bg-indigo-500",
-  rose: "bg-rose-500",
-  amber: "bg-amber-500",
-  emerald: "bg-emerald-500",
-  sky: "bg-sky-500",
-  violet: "bg-violet-500",
-  orange: "bg-orange-500",
-  teal: "bg-teal-500",
-};
+import { Avatar, Badge, Card } from "@/components/ui";
 
 export default async function MembersPage() {
   const me = await requireMember();
@@ -25,13 +14,7 @@ export default async function MembersPage() {
         <ul className="divide-y divide-line/70">
           {members.map((m) => (
             <li key={m.id} className="flex items-center gap-3.5 px-5 py-4">
-              <span
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[15px] font-bold text-white ${
-                  AVATAR[m.color] ?? "bg-indigo-500"
-                }`}
-              >
-                {m.displayName.slice(0, 1)}
-              </span>
+              <Avatar name={m.displayName} color={m.color} />
 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[17px] font-bold">

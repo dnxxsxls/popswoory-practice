@@ -5,26 +5,30 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { chooseGroup, finishTutorial } from "@/actions/onboarding";
 import { GROUPS, findGroup } from "@/lib/groups";
-import { Badge, Button, Card, ErrorText } from "./ui";
+import { Avatar, Badge, Button, Card, ErrorText } from "./ui";
 
 export type TimetableState = "none" | "uploaded" | "parsed";
+
+export type TutorialMember = {
+  id: string;
+  displayName: string;
+  color: string;
+  groupNo: number | null;
+  /** 시간표를 읽어서 블록까지 확정한 상태 */
+  ready: boolean;
+};
 
 type Props = {
   /** 이미 고른 조가 있으면 1단계를 건너뛴다 */
   initialGroupNo: number | null;
   timetable: TimetableState;
-  memberCount: number;
-  readyCount: number;
+  members: TutorialMember[];
+  meId: string;
 };
 
 const TOTAL_STEPS = 3;
 
-export function HomeTutorial({
-  initialGroupNo,
-  timetable,
-  memberCount,
-  readyCount,
-}: Props) {
+export function HomeTutorial({ initialGroupNo, timetable, members, meId }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [step, setStep] = useState(initialGroupNo === null ? 1 : 2);
@@ -32,6 +36,12 @@ export function HomeTutorial({
   const [error, setError] = useState("");
 
   const group = findGroup(picked);
+
+  // 방금 1단계에서 고른 조는 서버 목록에 아직 반영되기 전일 수 있어, 내 조는 picked 로 본다.
+  const mates =
+    picked === null
+      ? []
+      : members.filter((m) => (m.id === meId ? picked : m.groupNo) === picked);
 
   function confirmGroup() {
     if (picked === null) return;
@@ -61,7 +71,7 @@ export function HomeTutorial({
           {step} / {TOTAL_STEPS}
         </Badge>
         <span className="text-[15px] font-bold">
-          {step === 1 ? "행사 및 조 확인" : step === 2 ? "시간표 등록" : "모임 현황"}
+          {step === 1 ? "행사 및 조 확인" : step === 2 ? "시간표 등록" : "우리 조"}
         </span>
       </div>
 
@@ -143,27 +153,40 @@ export function HomeTutorial({
         </Card>
       ) : null}
 
-      {/* ── 3단계: 모임 현황 ── */}
+      {/* ── 3단계: 우리 조에 누가 들어와 있는지 ── */}
       {step === 3 ? (
         <Card>
-          <div className="flex items-baseline justify-between">
-            <p className="text-[17px] font-bold">모임 현황</p>
-            <p className="text-[15px] font-semibold text-muted">
-              <span className="text-accent">{readyCount}</span> / {memberCount}명
-            </p>
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-[17px] font-bold">{group ? `${group.no}조` : "우리 조"}</p>
+            <p className="text-[15px] font-semibold text-muted">{mates.length}명 참여</p>
           </div>
 
-          <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-surface-2">
-            <div
-              className="h-full rounded-full bg-accent transition-all"
-              style={{ width: `${memberCount ? (readyCount / memberCount) * 100 : 0}%` }}
-            />
-          </div>
+          {group ? (
+            <div className="mt-3 rounded-xl bg-accent-soft px-4 py-3">
+              <p className="text-[13px] font-bold text-accent">멘토</p>
+              <p className="mt-0.5 text-[15px] font-bold">{group.mentors.join(" · ")}</p>
+            </div>
+          ) : null}
 
-          <p className="mt-3 text-[15px] text-muted">
-            {readyCount === memberCount
-              ? "전원 등록됐어요."
-              : "아직 등록하지 않은 멤버가 있어요."}
+          <ul className="mt-4 space-y-3">
+            {mates.map((m) => (
+              <li key={m.id} className="flex items-center gap-3">
+                <Avatar name={m.displayName} color={m.color} size={36} />
+                <p className="min-w-0 flex-1 truncate text-[15px] font-bold">
+                  {m.displayName}
+                  {m.id === meId ? (
+                    <span className="ml-1.5 text-[13px] font-medium text-muted">(나)</span>
+                  ) : null}
+                </p>
+                {m.ready ? <Badge tone="accent">시간표 등록</Badge> : <Badge>미등록</Badge>}
+              </li>
+            ))}
+          </ul>
+
+          <p className="mt-4 text-[15px] leading-relaxed text-muted">
+            {mates.length <= 1
+              ? "아직 이 조에서는 혼자예요. 다른 조원이 가입하면 여기에 표시됩니다."
+              : "조원이 더 가입하면 여기에 함께 표시돼요."}
           </p>
 
           <div className="mt-4">

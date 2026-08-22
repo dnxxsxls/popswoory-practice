@@ -41,8 +41,14 @@ export default async function HomePage() {
         <HomeTutorial
           initialGroupNo={meRecord?.groupNo ?? null}
           timetable={timetable}
-          memberCount={members.length}
-          readyCount={registered.size}
+          meId={me.memberId}
+          members={members.map((m) => ({
+            id: m.id,
+            displayName: m.displayName,
+            color: m.color,
+            groupNo: m.groupNo,
+            ready: registered.has(m.id),
+          }))}
         />
       </AppShell>
     );
