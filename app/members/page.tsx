@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireMember } from "@/lib/guard";
+import { requireOnboarded } from "@/lib/guard";
 import { getMember, listActiveSchedules, listMembers } from "@/lib/store";
 import { AppShell } from "@/components/app-shell";
 import { RosterRow, type RosterMember } from "@/components/group-roster";
@@ -8,7 +8,7 @@ import { ProfileEdit } from "@/components/profile-edit";
 import { Card } from "@/components/ui";
 
 export default async function MembersPage() {
-  const me = await requireMember();
+  const me = await requireOnboarded();
   const [members, schedules, meRecord] = await Promise.all([
     listMembers(),
     listActiveSchedules(),

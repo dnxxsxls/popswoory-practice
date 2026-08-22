@@ -1,4 +1,4 @@
-import { requireMember } from "@/lib/guard";
+import { requireOnboarded } from "@/lib/guard";
 import { getActiveSchedule } from "@/lib/store";
 import { AppShell } from "@/components/app-shell";
 import { TimetableUploader } from "@/components/timetable-uploader";
@@ -13,7 +13,7 @@ function formatDate(iso: string) {
 }
 
 export default async function TimetablePage() {
-  const me = await requireMember();
+  const me = await requireOnboarded();
   const schedule = await getActiveSchedule(me.memberId);
 
   return (

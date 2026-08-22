@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireMember } from "@/lib/guard";
+import { requireOnboarded } from "@/lib/guard";
 import { listActiveSchedules, listMembers } from "@/lib/store";
 import { buildFreeTable, type MemberSchedule } from "@/lib/free-time";
 import { AppShell } from "@/components/app-shell";
@@ -7,7 +7,7 @@ import { FreeGrid } from "@/components/free-grid";
 import { Badge, Card } from "@/components/ui";
 
 export default async function FreePage() {
-  await requireMember();
+  await requireOnboarded();
 
   const [members, schedules] = await Promise.all([listMembers(), listActiveSchedules()]);
 

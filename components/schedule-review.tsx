@@ -27,9 +27,15 @@ function toEdit(blocks: Pick<ScheduleBlock, "weekday" | "startMin" | "endMin" | 
 export function ScheduleReview({
   initial,
   hasImage,
+  doneHref,
 }: {
   initial: ScheduleBlock[];
   hasImage: boolean;
+  /**
+   * 확정 후 곧바로 이동할 경로. 온보딩처럼 다음 단계가 정해져 있을 때 넘긴다.
+   * 없으면 완료 안내를 띄우고 사용자가 고르게 한다.
+   */
+  doneHref?: string;
 }) {
   const router = useRouter();
   const [blocks, setBlocks] = useState<EditBlock[]>(() => toEdit(initial));
@@ -78,6 +84,12 @@ export function ScheduleReview({
       );
       if (!res.ok) {
         setError(res.message);
+        return;
+      }
+      if (doneHref) {
+        // 다음 단계가 정해져 있으면 무엇을 할지 묻지 않고 그대로 이어간다
+        router.replace(doneHref);
+        router.refresh();
         return;
       }
       // 바로 이동하지 않고, 다음에 뭘 하면 되는지 알려준다

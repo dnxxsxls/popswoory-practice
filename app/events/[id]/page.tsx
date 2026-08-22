@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireMember } from "@/lib/guard";
+import { requireOnboarded } from "@/lib/guard";
 import { getEvent } from "@/lib/store";
 import { buildEventView } from "@/lib/event-view";
 import { formatDate } from "@/lib/candidates";
@@ -8,7 +8,7 @@ import { AppShell } from "@/components/app-shell";
 import { EventDetail } from "@/components/event-detail";
 
 export default async function EventPage({ params }: PageProps<"/events/[id]">) {
-  const me = await requireMember();
+  const me = await requireOnboarded();
   const { id } = await params;
 
   const event = await getEvent(id);

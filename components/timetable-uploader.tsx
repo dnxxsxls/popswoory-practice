@@ -17,7 +17,14 @@ const INITIAL: Rect = { x: 0, y: 0, w: 1, h: 1 };
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
-export function TimetableUploader({ mode }: { mode: "onboarding" | "replace" }) {
+export function TimetableUploader({
+  mode,
+  reviewHref = "/timetable/review",
+}: {
+  mode: "onboarding" | "replace";
+  /** 업로드·직접입력 후 갈 확인 화면. 온보딩은 자기 경로를 넘긴다. */
+  reviewHref?: string;
+}) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -159,7 +166,7 @@ export function TimetableUploader({ mode }: { mode: "onboarding" | "replace" }) 
         throw new Error(body?.error ?? "업로드에 실패했어요.");
       }
 
-      router.replace("/timetable/review");
+      router.replace(reviewHref);
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "업로드에 실패했어요.");
@@ -217,7 +224,7 @@ export function TimetableUploader({ mode }: { mode: "onboarding" | "replace" }) 
           onClick={() =>
             startManual(async () => {
               await startManualTimetable();
-              router.replace("/timetable/review");
+              router.replace(reviewHref);
               router.refresh();
             })
           }

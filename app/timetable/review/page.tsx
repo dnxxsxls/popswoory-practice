@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { requireMember } from "@/lib/guard";
+import { requireOnboarded } from "@/lib/guard";
 import { getActiveSchedule } from "@/lib/store";
 import { AppShell } from "@/components/app-shell";
 import { ScheduleReview } from "@/components/schedule-review";
 
 export default async function TimetableReviewPage() {
-  const me = await requireMember();
+  const me = await requireOnboarded();
   const schedule = await getActiveSchedule(me.memberId);
 
   if (!schedule) redirect("/timetable");

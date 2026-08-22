@@ -130,6 +130,27 @@ input[type="number"]::-webkit-inner-spin-button {
   animation: msg-in 0.35s ease-out;
 }
 
+/* 온보딩 음표가 제자리에서 위아래로 떠다닌다 */
+@keyframes note-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(6deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(10deg);
+  }
+}
+
+.note-float {
+  animation: note-float 2.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .note-float {
+    animation: none;
+  }
+}
+
 /* 조 책갈피를 넘길 때 명단이 살짝 올라오며 바뀐다 */
 @keyframes tab-in {
   from {

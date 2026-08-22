@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { formatDate } from "@/lib/candidates";
 import { formatMin } from "@/lib/time";
-import type { TimetableState } from "./home-tutorial";
+/** 내 시간표 준비 상태 — 홈에서 할 일을 정하는 데 쓴다. */
+export type TimetableState = "none" | "uploaded" | "parsed";
 import { Badge, Card } from "./ui";
 
 /** 확정된 연습 하나. 참석 집계까지 끝난 상태로 받는다. */

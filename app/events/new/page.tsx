@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { requireMember } from "@/lib/guard";
+import { requireOnboarded } from "@/lib/guard";
 import { AppShell } from "@/components/app-shell";
 import { EventCreateForm } from "@/components/event-create-form";
 
 export default async function NewEventPage() {
-  await requireMember();
+  await requireOnboarded();
 
   return (
     <AppShell title="연습 일정 만들기" subtitle="가능한 날짜를 고르면 되는 시간을 찾아드려요">

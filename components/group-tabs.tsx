@@ -20,12 +20,15 @@ export function GroupTabs({
   meId,
   excludeMe = false,
   emptyText = "아직 이 조에서 가입한 사람은 나뿐이에요.",
+  bare = false,
 }: {
   groups: GroupRoster[];
   meId: string;
   /** 내 정보를 따로 떼어 보여주는 화면에서는 명단에서 나를 뺀다 */
   excludeMe?: boolean;
   emptyText?: string;
+  /** 이미 다른 카드 안에 들어가는 경우 자기 카드를 그리지 않는다 (튜토리얼) */
+  bare?: boolean;
 }) {
   const [active, setActive] = useState(groups[0]?.no ?? null);
   const current = groups.find((g) => g.no === active) ?? groups[0] ?? null;
@@ -49,6 +52,40 @@ export function GroupTabs({
     ) : (
       <p className="text-[15px] leading-relaxed text-muted">{emptyText}</p>
     );
+
+  // 감싸는 카드가 이미 있으면 책갈피 대신 알약 버튼을 쓴다 — 카드 모서리에
+  // 붙을 자리가 없어서 책갈피 모양이 성립하지 않는다.
+  if (bare) {
+    return (
+      <div>
+        {tabbed ? (
+          <div className="flex flex-wrap gap-1.5">
+            {groups.map((g) => (
+              <button
+                key={g.no}
+                type="button"
+                onClick={() => setActive(g.no)}
+                aria-pressed={g.no === current.no}
+                className={`h-9 rounded-xl px-4 text-[15px] font-bold transition-colors duration-200 ease-in-out ${
+                  g.no === current.no ? "bg-accent text-accent-fg" : "bg-surface-2 text-fg-2"
+                }`}
+              >
+                {g.no}조
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        <div className={`flex items-baseline justify-between gap-3 ${tabbed ? "mt-4" : ""}`}>
+          <p className="text-[17px] font-bold">{current.no}조</p>
+          <p className="text-[15px] font-semibold text-muted">{roster.length}명</p>
+        </div>
+        <div key={current.no} className="tab-in mt-4">
+          {list}
+        </div>
+      </div>
+    );
+  }
 
   // 조가 하나면 넘길 것이 없으니 조 번호와 인원까지 전부 카드 안에 담는다.
   if (!tabbed) {

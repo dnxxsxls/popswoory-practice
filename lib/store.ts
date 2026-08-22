@@ -34,6 +34,14 @@ export type Member = {
 
 export type GroupRole = "mentor" | "member";
 
+/**
+ * 필수 튜토리얼을 아직 마치지 않았는지. 역할·조가 비어 있으면(예전 데이터)
+ * 튜토리얼을 다시 태운다. 화면 제한과 안내 오버레이가 이 값을 기준으로 붙는다.
+ */
+export function isInTutorial(member: Member | null): boolean {
+  return !member?.tutorialDoneAt || member.groupRole === null;
+}
+
 /** class = 시간표에서 읽은 수업 / personal = 사용자가 직접 추가한 개인 불가 시간(알바·통학 등) */
 export type BlockKind = "class" | "personal";
 

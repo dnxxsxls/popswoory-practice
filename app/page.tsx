@@ -1,16 +1,15 @@
-import { requireMember } from "@/lib/guard";
+import { requireOnboarded } from "@/lib/guard";
 import {
   getActiveSchedule,
-  getMember,
   listActiveSchedules,
   listEvents,
   listMembers,
   listResponsesForEvents,
 } from "@/lib/store";
-import { HomeTutorial, type TimetableState } from "@/components/home-tutorial";
 import {
   HomeDashboard,
   homeSubtitle,
+  type TimetableState,
   type PollingItem,
   type UpcomingItem,
 } from "@/components/home-dashboard";
@@ -18,13 +17,12 @@ import { slotKeyOf, todayKst } from "@/lib/candidates";
 import { AppShell } from "@/components/app-shell";
 
 export default async function HomePage() {
-  const me = await requireMember();
-  const [mine, members, schedules, events, meRecord] = await Promise.all([
+  const me = await requireOnboarded();
+  const [mine, members, schedules, events] = await Promise.all([
     getActiveSchedule(me.memberId),
     listMembers(),
     listActiveSchedules(),
     listEvents(),
-    getMember(me.memberId),
   ]);
 
   const registered = new Set(schedules.filter((s) => s.blocks.length > 0).map((s) => s.memberId));
@@ -39,27 +37,6 @@ export default async function HomePage() {
       {me.displayName} 님
     </>
   );
-
-  // 역할·조가 비어 있으면 (예전 데이터) 튜토리얼을 다시 태워서 채운다.
-  if (!meRecord?.tutorialDoneAt || meRecord.groupRole === null) {
-    return (
-      <AppShell title={greeting} subtitle="시작하기 전에 확인해 주세요">
-        <HomeTutorial
-          initialRole={meRecord?.groupRole ?? null}
-          initialGroupNos={meRecord?.groupNos ?? []}
-          timetable={timetable}
-          meId={me.memberId}
-          members={members.map((m) => ({
-            id: m.id,
-            displayName: m.displayName,
-            mentor: m.groupRole === "mentor",
-            blocks: schedules.find((s) => s.memberId === m.id)?.blocks ?? [],
-            groupNos: m.groupNos,
-          }))}
-        />
-      </AppShell>
-    );
-  }
 
   const responses = await listResponsesForEvents(events.map((e) => e.id));
   const names = new Map(members.map((m) => [m.id, m.displayName]));
