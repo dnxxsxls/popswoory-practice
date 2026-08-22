@@ -79,7 +79,7 @@ export function ProfileEdit({ displayName, groupRole, groupNos }: Props) {
 
   return (
     <>
-      <Button type="button" variant="secondary" size="sm" onClick={openSheet}>
+      <Button type="button" variant="outline" size="sm" onClick={openSheet}>
         수정
       </Button>
 

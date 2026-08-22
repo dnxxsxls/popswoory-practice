@@ -11,7 +11,7 @@ export function Card({
 }
 
 type ButtonProps = ComponentProps<"button"> & {
-  variant?: "primary" | "secondary" | "ghost";
+  variant?: "primary" | "secondary" | "outline" | "ghost";
   /** md = 화면 하단의 주 버튼 / sm = 목록·제목 옆에 붙는 작은 동작 */
   size?: "md" | "sm";
   full?: boolean;
@@ -28,11 +28,14 @@ export function Button({
     "inline-flex items-center justify-center gap-2 font-bold disabled:opacity-40 disabled:pointer-events-none";
   const sizes = {
     md: "h-14 rounded-2xl px-5 text-[17px]",
-    sm: "h-9 rounded-xl px-3.5 text-[13px]",
+    sm: "h-8 rounded-xl px-3 text-[13px]",
   } as const;
   const variants = {
     primary: "bg-accent text-accent-fg hover:bg-accent-press",
     secondary: "bg-surface-2 text-fg-2 hover:brightness-95",
+    // surface-2 는 밝은 테마에서 페이지 배경과 같은 색이라 카드 바깥에서는 형태가
+    // 보이지 않는다. 카드 밖에 놓는 버튼은 흰 바탕에 옅은 테두리를 쓴다.
+    outline: "bg-surface text-fg-2 ring-1 ring-inset ring-line hover:brightness-95",
     ghost: "text-muted hover:text-fg-2",
   } as const;
 

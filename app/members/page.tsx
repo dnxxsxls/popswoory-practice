@@ -74,6 +74,8 @@ export default async function MembersPage() {
         <RosterRow member={mine} />
       </Card>
 
+      <h2 className="px-1 pt-3 text-[17px] font-bold">우리 조</h2>
+
       <GroupTabs
         groups={groups}
         meId={me.memberId}
