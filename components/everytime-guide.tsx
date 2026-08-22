@@ -10,12 +10,10 @@ const STEPS: { text: string; src: string; zoom?: { scale: number; origin: string
   {
     text: "본인 시간표를 선택해주세요",
     src: "/guide/step-3.png",
-    zoom: { scale: 1.45, origin: "38% 50%" },
   },
   {
     text: "오른쪽 위 톱니바퀴를 눌러주세요",
     src: "/guide/step-4.png",
-    zoom: { scale: 1.45, origin: "64% 50%" },
   },
   {
     text: "[이미지로 저장]을 눌러주세요",
@@ -152,23 +150,29 @@ export function EverytimeGuide() {
                 else if (dx >= SWIPE_PX) go(-1);
               }}
             >
-              <Image
-                key={step}
-                src={current.src}
-                alt=""
-                width={1200}
-                height={642}
-                priority
-                style={
-                  current.zoom
-                    ? {
-                        transform: `scale(${current.zoom.scale})`,
-                        transformOrigin: current.zoom.origin,
-                      }
-                    : undefined
-                }
-                className="msg-in block aspect-[1200/642] w-full object-cover"
-              />
+              {/*
+                등장 애니메이션은 감싸는 요소에 건다. 같은 요소에 걸면 애니메이션의
+                transform 이 확대(scale)를 덮어써서, 도는 동안 작게 보이다가
+                끝나는 순간 튀어 커진다.
+              */}
+              <span key={step} className="msg-in block overflow-hidden">
+                <Image
+                  src={current.src}
+                  alt=""
+                  width={1200}
+                  height={642}
+                  priority
+                  style={
+                    current.zoom
+                      ? {
+                          transform: `scale(${current.zoom.scale})`,
+                          transformOrigin: current.zoom.origin,
+                        }
+                      : undefined
+                  }
+                  className="block aspect-[1200/642] w-full object-cover"
+                />
+              </span>
 
               <Arrow dir="prev" onClick={() => go(-1)} disabled={step === 0} />
               <Arrow dir="next" onClick={() => go(1)} disabled={step === STEPS.length - 1} />
@@ -201,19 +205,27 @@ export function EverytimeGuide() {
               ))}
             </div>
 
-            <div className="mt-5 flex gap-3">
+            {/*
+              첫 컷에서는 이전이 아예 없다. 눌리지도 않는 버튼을 자리만 차지하게
+              두는 것보다 낫다. 폭과 여백을 함께 줄여서 다음 버튼이 자연스럽게
+              늘어나고 줄어든다 — gap 대신 오른쪽 여백을 쓰는 이유도 그것이다.
+            */}
+            <div className="mt-5 flex">
               <button
                 type="button"
                 onClick={() => go(-1)}
-                disabled={step === 0}
-                className="h-14 flex-1 rounded-2xl bg-surface-2 text-[17px] font-bold text-fg-2 disabled:opacity-40"
+                aria-hidden={step === 0}
+                tabIndex={step === 0 ? -1 : 0}
+                className={`h-14 shrink-0 overflow-hidden whitespace-nowrap rounded-2xl bg-surface-2 text-[17px] font-bold text-fg-2 transition-all duration-300 ease-in-out ${
+                  step === 0 ? "pointer-events-none mr-0 w-0 opacity-0" : "mr-3 w-1/3 opacity-100"
+                }`}
               >
                 이전
               </button>
               <button
                 type="button"
                 onClick={() => (step === STEPS.length - 1 ? close() : go(1))}
-                className="h-14 flex-[2] rounded-2xl bg-accent text-[17px] font-bold text-accent-fg"
+                className="h-14 flex-1 rounded-2xl bg-accent text-[17px] font-bold text-accent-fg"
               >
                 {step === STEPS.length - 1 ? "확인했어요" : "다음"}
               </button>

@@ -84,8 +84,13 @@ export function OnboardingShell({
         </div>
       ) : null}
 
-      {/* 넘칠 때만 스크롤된다. min-h-0 이 없으면 flex 자식이 줄지 않아 넘침이 밖으로 샌다. */}
-      <div className={`relative z-10 min-h-0 flex-1 overflow-y-auto ${topBack ? "pt-4" : "pt-9"}`}>
+      {/*
+        넘칠 때만 스크롤된다. min-h-0 이 없으면 flex 자식이 줄지 않아 넘침이 밖으로 샌다.
+        z-index 는 두지 않는다 — 쌓임 맥락이 생기면 안에서 열리는 시트가 아무리 높은
+        z-index 를 써도 이 영역 밖(아래 버튼)을 덮지 못한다. 마스코트보다는 DOM 순서로
+        이미 위에 온다.
+      */}
+      <div className={`relative min-h-0 flex-1 overflow-y-auto ${topBack ? "pt-4" : "pt-9"}`}>
         <h1 className="whitespace-pre-line break-keep text-[26px] font-extrabold leading-tight">
           {title}
         </h1>
@@ -98,7 +103,7 @@ export function OnboardingShell({
 
       {/* 이전은 주 버튼 왼쪽에 붙여 모든 화면에서 같은 자리에 둔다 */}
       {footer || onBack ? (
-        <div className="relative z-10 mt-4 flex gap-3">
+        <div className="relative mt-4 flex gap-3">
           {onBack ? (
             <Button
               variant="secondary"
