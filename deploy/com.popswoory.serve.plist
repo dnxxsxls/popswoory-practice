@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  맥미니 로그인 시 앱 서버(npm run serve)를 자동으로 띄운다.
+  설치:   cp deploy/com.popswoory.serve.plist ~/Library/LaunchAgents/
+          launchctl load ~/Library/LaunchAgents/com.popswoory.serve.plist
+  해제:   launchctl unload ~/Library/LaunchAgents/com.popswoory.serve.plist
+  로그:   ~/Library/Logs/popswoory-serve.log
+
+  경로가 이 맥미니 기준으로 박혀 있다. 다른 머신에서 쓰려면 node/npm 경로와
+  WorkingDirectory 를 그 머신에 맞게 고쳐야 한다.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.popswoory.serve</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/wonbin/.hermes/node/bin/node</string>
+    <string>/Users/wonbin/.hermes/node/lib/node_modules/npm/bin/npm-cli.js</string>
+    <string>run</string>
+    <string>serve</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/wonbin/Desktop/pops</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/wonbin/.hermes/node/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>NODE_ENV</key>
+    <string>production</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/wonbin/Library/Logs/popswoory-serve.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/wonbin/Library/Logs/popswoory-serve.log</string>
+</dict>
+</plist>

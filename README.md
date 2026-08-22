@@ -64,23 +64,46 @@ npm run claude:status
 **Vercel 같은 서버리스에는 올릴 수 없다** — 자동 분석이 이 머신의 클로드 로그인을 쓰고,
 데이터도 로컬 파일에 저장하기 때문이다.
 
-터미널 두 개가 필요하다.
+주소는 **Tailscale Funnel** 로 고정한다.
 
-```bash
-npm run build && npm run serve
+```
+https://popswoory.drum-aldebaran.ts.net
 ```
 
+앞부분 `popswoory` 는 기기 이름, 뒷부분은 타넷 이름이다. 둘 다 계정에 묶여 있어
+맥미니를 재부팅해도 주소가 바뀌지 않는다. Cloudflare 로 고정 주소를 만들려면
+도메인을 사야 해서 이쪽을 택했다 — Funnel 은 무료다.
+
+### 처음 한 번만
+
 ```bash
-npm run tunnel
+brew install tailscale
+sudo brew services start tailscale
+sudo tailscale up --hostname=popswoory --operator=$USER
+npm run build && npm run tunnel
 ```
 
-두 번째 명령이 `https://xxxx.trycloudflare.com` 주소를 출력한다. 폰에서 바로 접속된다.
+`npm run tunnel` 은 3100 포트를 여는 설정을 tailscaled 에 저장한다. 상시 떠 있는
+명령이 아니라 한 번만 돌리면 되고, 재부팅해도 유지된다. 중간에 관리 콘솔에서
+Funnel 과 HTTPS 인증서를 켜라는 링크가 뜨면 눌러줘야 한다.
 
-- `cloudflared` 가 없으면 `brew install cloudflared`
-- 이 맥이 켜져 있어야 하고, 절전에 들어가면 끊긴다
-- **주소는 터널을 다시 켤 때마다 바뀐다.** 고정하려면 Cloudflare 무료 계정 + 도메인으로
-  named tunnel 을 만들면 된다
+앱 서버는 로그인할 때 자동으로 뜬다.
+
+```bash
+cp deploy/com.popswoory.serve.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.popswoory.serve.plist
+```
+
+### 알아둘 것
+
+- 이 맥이 켜져 있어야 하고, **절전에 들어가면 끊긴다** (시스템 설정에서 잠자기 해제)
+- LaunchAgent 는 로그인할 때 뜬다. 재부팅 후 저절로 복구되게 하려면 자동 로그인을 켜둘 것
+- 코드를 고쳤으면 `npm run build` 후
+  `launchctl kickstart -k gui/$(id -u)/com.popswoory.serve`
+- Funnel 이 공개할 수 있는 포트는 443 / 8443 / 10000 뿐이다. 3100 은 그 뒤로 프록시된다
+- 로그는 `~/Library/Logs/popswoory-serve.log`
 - 주소를 아는 사람은 가입 화면까지 들어올 수 있으니 링크는 모임 내부에만 공유할 것
+- 공개를 끄려면 `npm run tunnel:off`
 
 세션 쿠키의 `Secure` 는 요청이 https 일 때만 켜진다(`lib/session.ts`).
 평문 http 로 자체 호스팅할 때 로그인이 조용히 실패하는 것을 막기 위해서다.
