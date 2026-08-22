@@ -1,4 +1,7 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useState, type ReactNode } from "react";
+import { formatMin } from "@/lib/time";
 
 export const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 
@@ -18,12 +21,6 @@ export type GridBlock = {
   confidence: "high" | "low";
   kind?: "class" | "personal";
 };
-
-export function formatMin(min: number) {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
 
 /** 종류가 다른 블록이 맞닿을 때 벌리는 간격(px) */
 const KIND_GAP_PX = 1;
@@ -127,37 +124,77 @@ export function GridFrame({
   );
 }
 
-/** 읽기 전용 시간표. */
+/** 수업은 대개 이 시각이면 끝난다. 뒤가 비어 있으면 접어둔다. */
+const COLLAPSED_END_HOUR = 18;
+
+/** 읽기 전용 시간표. 늦은 시간대는 접어두고 필요한 사람만 펼친다. */
 export function ScheduleGrid({ blocks }: { blocks: GridBlock[] }) {
-  const { dayCount, startHour, endHour } = gridBounds(blocks);
+  const [expanded, setExpanded] = useState(false);
+  const { dayCount, startHour, endHour: fullEnd } = gridBounds(blocks);
+
+  // 접었을 때도 블록은 하나도 가리지 않는다 — 비어 있는 꼬리만 잘라낸다.
+  const lastBlockHour = blocks.reduce(
+    (acc, b) => Math.max(acc, Math.ceil(b.endMin / 60)),
+    COLLAPSED_END_HOUR,
+  );
+  const collapsedEnd = Math.min(fullEnd, lastBlockHour);
+  const canExpand = collapsedEnd < fullEnd;
+  const endHour = expanded || !canExpand ? fullEnd : collapsedEnd;
   const spanMin = (endHour - startHour) * 60;
 
   return (
-    <GridFrame
-      dayCount={dayCount}
-      startHour={startHour}
-      endHour={endHour}
-      renderColumn={(weekday) => {
-        const dayBlocks = blocks.filter((b) => b.weekday === weekday);
-        return dayBlocks.map((b, i) => {
-          const { rounding, gapTop } = blockEdges(b, dayBlocks);
-          return (
-            <div
-              key={`${b.startMin}-${i}`}
-              style={{
-                top: `calc(${((b.startMin - startHour * 60) / spanMin) * 100}% + ${gapTop}px)`,
-                height: `calc(${((b.endMin - b.startMin) / spanMin) * 100}% - ${gapTop}px)`,
-              }}
-              aria-label={`${b.kind === "personal" ? "개인일정" : "수업"} ${formatMin(
-                b.startMin,
-              )}-${formatMin(b.endMin)}`}
-              className={`absolute inset-x-0 ${rounding} ${
-                b.kind === "personal" ? PERSONAL_COLOR : CLASS_COLOR
-              }`}
-            />
-          );
-        });
-      }}
-    />
+    <div>
+      <GridFrame
+        dayCount={dayCount}
+        startHour={startHour}
+        endHour={endHour}
+        renderColumn={(weekday) => {
+          const dayBlocks = blocks.filter((b) => b.weekday === weekday);
+          return dayBlocks.map((b, i) => {
+            const { rounding, gapTop } = blockEdges(b, dayBlocks);
+            return (
+              <div
+                key={`${b.startMin}-${i}`}
+                style={{
+                  top: `calc(${((b.startMin - startHour * 60) / spanMin) * 100}% + ${gapTop}px)`,
+                  height: `calc(${((b.endMin - b.startMin) / spanMin) * 100}% - ${gapTop}px)`,
+                }}
+                aria-label={`${b.kind === "personal" ? "개인일정" : "수업"} ${formatMin(
+                  b.startMin,
+                )}-${formatMin(b.endMin)}`}
+                className={`absolute inset-x-0 ${rounding} ${
+                  b.kind === "personal" ? PERSONAL_COLOR : CLASS_COLOR
+                }`}
+              />
+            );
+          });
+        }}
+      />
+
+      {canExpand ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className="flex h-10 w-full items-center justify-center gap-1.5 text-[13px] font-bold text-muted"
+        >
+          {expanded ? "접기" : `${endHour}시 이후 보기`}
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            className={expanded ? "rotate-180" : ""}
+          >
+            <path d="M6 9.5 12 15.5 18 9.5" />
+          </svg>
+        </button>
+      ) : null}
+    </div>
   );
 }

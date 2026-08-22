@@ -9,10 +9,11 @@ export type GroupRoster = {
 };
 
 /**
- * 내가 속한 조의 명단. 겸직 멘토처럼 조가 둘 이상이면 탭으로 넘긴다.
+ * 내가 속한 조의 명단. 겸직 멘토처럼 조가 둘 이상이면 책갈피처럼 넘긴다.
  *
- * 조가 하나면 탭 줄을 아예 그리지 않는다. 누를 것도 없는 탭 한 칸이
- * 자리만 먹고 "다른 조가 있나?" 하고 헷갈리게 만든다.
+ * 고른 조는 아래 카드와 같은 색이라 한 장으로 이어져 보이고, 나머지는 조금
+ * 낮고 흐리게 뒤에 깔린다. 조가 하나면 탭 줄을 아예 그리지 않는다 — 누를 것도
+ * 없는 탭 한 칸은 자리만 먹고 다른 조가 또 있나 헷갈리게 만든다.
  */
 export function GroupTabs({
   groups,
@@ -30,30 +31,36 @@ export function GroupTabs({
   const current = groups.find((g) => g.no === active) ?? groups[0] ?? null;
   if (!current) return null;
 
+  const tabbed = groups.length > 1;
   const roster = sortByRole(current.members);
   const shown = excludeMe ? roster.filter((m) => m.id !== meId) : roster;
+  // 첫 탭이 켜져 있으면 그 아래 모서리는 각져야 탭과 한 장으로 이어진다.
+  const firstActive = tabbed && groups[0].no === current.no;
 
   return (
     <div>
-      {groups.length > 1 ? (
-        <div className="flex gap-1.5 rounded-2xl bg-surface-2 p-1.5">
-          {groups.map((g) => (
-            <button
-              key={g.no}
-              type="button"
-              onClick={() => setActive(g.no)}
-              aria-pressed={g.no === current.no}
-              className={`h-11 flex-1 rounded-xl text-[15px] font-bold transition-colors ${
-                g.no === current.no ? "bg-surface text-fg shadow-sm" : "text-muted"
-              }`}
-            >
-              {g.no}조
-            </button>
-          ))}
+      {tabbed ? (
+        <div className="flex items-end gap-1">
+          {groups.map((g) => {
+            const on = g.no === current.no;
+            return (
+              <button
+                key={g.no}
+                type="button"
+                onClick={() => setActive(g.no)}
+                aria-pressed={on}
+                className={`rounded-t-xl px-5 text-[15px] font-bold ${
+                  on ? "h-10 bg-surface text-fg" : "h-8 bg-surface-2 text-muted"
+                }`}
+              >
+                {g.no}조
+              </button>
+            );
+          })}
         </div>
       ) : null}
 
-      <div className={groups.length > 1 ? "mt-4" : ""}>
+      <div className={`rounded-2xl bg-surface p-5 ${firstActive ? "rounded-tl-none" : ""}`}>
         <div className="flex items-baseline justify-between gap-3">
           <p className="text-[17px] font-bold">{current.no}조</p>
           <p className="text-[15px] font-semibold text-muted">{roster.length}명</p>

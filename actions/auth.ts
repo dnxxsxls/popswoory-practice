@@ -63,11 +63,13 @@ export async function signUp(rawName: string, rawPin: string): Promise<AuthResul
   if (!name.success) return { ok: false, error: name.error.issues[0].message };
   if (!pin.success) return { ok: false, error: pin.error.issues[0].message };
 
-  if (await findMemberByName(name.data)) {
+  // 중복 확인은 createMember 안에서 저장과 함께 이뤄진다 — 같은 이름으로
+  // 동시에 가입을 눌러도 한 명만 통과한다.
+  const member = await createMember(name.data, await hashPin(pin.data));
+  if (!member) {
     return { ok: false, error: "이미 등록된 이름이에요. 로그인해 주세요." };
   }
 
-  const member = await createMember(name.data, await hashPin(pin.data));
   await createSession({
     memberId: member.id,
     displayName: member.displayName,

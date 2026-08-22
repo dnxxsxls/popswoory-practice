@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { formatDate } from "@/lib/candidates";
-import { formatMin } from "./schedule-grid";
+import { formatMin } from "@/lib/time";
 import type { TimetableState } from "./home-tutorial";
 import { Badge, Card } from "./ui";
 

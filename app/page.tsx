@@ -53,7 +53,7 @@ export default async function HomePage() {
             id: m.id,
             displayName: m.displayName,
             mentor: m.groupRole === "mentor",
-            ready: registered.has(m.id),
+            blocks: schedules.find((s) => s.memberId === m.id)?.blocks ?? [],
             groupNos: m.groupNos,
           }))}
         />

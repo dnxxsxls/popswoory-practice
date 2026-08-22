@@ -133,6 +133,21 @@ async function write(data: Data) {
   await fs.rename(tmp, DB_FILE);
 }
 
+/**
+ * 파일 하나를 통째로 읽고 다시 쓰기 때문에, 두 요청이 겹치면 나중 쓰기가
+ * 앞선 변경을 통째로 덮어쓴다 (같은 시각에 답한 두 사람 중 하나가 사라진다).
+ * 읽기~쓰기를 한 줄로 세워서 막는다. 프로세스가 하나라 인메모리 잠금으로 충분하고,
+ * Supabase 로 옮기면 트랜잭션이 대신하므로 이 헬퍼는 사라진다.
+ */
+let queue: Promise<unknown> = Promise.resolve();
+
+function withLock<T>(fn: () => Promise<T>): Promise<T> {
+  // 앞 작업이 실패해도 뒤 작업은 이어서 돌아야 한다
+  const next = queue.then(fn, fn);
+  queue = next.catch(() => undefined);
+  return next;
+}
+
 // ── 멤버 ──────────────────────────────────────────────────
 
 const COLORS = ["indigo", "rose", "amber", "emerald", "sky", "violet", "orange", "teal"];
@@ -144,10 +159,12 @@ export async function listMembers(): Promise<Member[]> {
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
+/** 표시명 비교 규칙 — 앞뒤 공백과 대소문자를 무시한다. */
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
 export async function findMemberByName(displayName: string): Promise<Member | null> {
   const data = await read();
-  const key = displayName.trim().toLowerCase();
-  return data.members.find((m) => m.displayName.toLowerCase() === key && m.isActive) ?? null;
+  return data.members.find((m) => m.isActive && sameName(m.displayName, displayName)) ?? null;
 }
 
 export async function getMember(id: string): Promise<Member | null> {
@@ -155,33 +172,48 @@ export async function getMember(id: string): Promise<Member | null> {
   return data.members.find((m) => m.id === id) ?? null;
 }
 
-export async function createMember(displayName: string, pinHash: string): Promise<Member> {
-  const data = await read();
-  const member: Member = {
-    id: randomUUID(),
-    displayName: displayName.trim(),
-    pinHash,
-    role: data.members.length === 0 ? "admin" : "member", // 첫 가입자가 관리자
-    color: COLORS[data.members.length % COLORS.length],
-    sessionVersion: 1,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    lastLoginAt: new Date().toISOString(),
-    groupRole: null,
-    groupNos: [],
-    tutorialDoneAt: null,
-  };
-  data.members.push(member);
-  await write(data);
-  return member;
+/**
+ * 표시명이 곧 로그인 아이디다. 확인과 삽입을 잠금 안에서 함께 해야
+ * 같은 이름으로 동시에 가입 요청이 들어와도 하나만 통과한다.
+ * 이름이 이미 있으면 null.
+ */
+export async function createMember(
+  displayName: string,
+  pinHash: string,
+): Promise<Member | null> {
+  return withLock(async () => {
+    const data = await read();
+    const name = displayName.trim();
+    if (data.members.some((m) => m.isActive && sameName(m.displayName, name))) return null;
+
+    const member: Member = {
+      id: randomUUID(),
+      displayName: name,
+      pinHash,
+      role: data.members.length === 0 ? "admin" : "member", // 첫 가입자가 관리자
+      color: COLORS[data.members.length % COLORS.length],
+      sessionVersion: 1,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      lastLoginAt: new Date().toISOString(),
+      groupRole: null,
+      groupNos: [],
+      tutorialDoneAt: null,
+    };
+    data.members.push(member);
+    await write(data);
+    return member;
+  });
 }
 
 export async function touchLogin(memberId: string) {
-  const data = await read();
-  const member = data.members.find((m) => m.id === memberId);
-  if (!member) return;
-  member.lastLoginAt = new Date().toISOString();
-  await write(data);
+  return withLock(async () => {
+    const data = await read();
+    const member = data.members.find((m) => m.id === memberId);
+    if (!member) return;
+    member.lastLoginAt = new Date().toISOString();
+    await write(data);
+  });
 }
 
 // ── 시간표 ────────────────────────────────────────────────
@@ -201,31 +233,33 @@ export async function saveScheduleImage(
   bytes: Buffer,
   meta: { width: number; height: number },
 ): Promise<Schedule> {
-  await fs.mkdir(UPLOAD_DIR, { recursive: true });
-  const fileName = `${randomUUID()}.jpg`;
-  await fs.writeFile(path.join(UPLOAD_DIR, fileName), bytes);
+  return withLock(async () => {
+    await fs.mkdir(UPLOAD_DIR, { recursive: true });
+    const fileName = `${randomUUID()}.jpg`;
+    await fs.writeFile(path.join(UPLOAD_DIR, fileName), bytes);
 
-  const data = await read();
-  // 기존 시간표는 비활성화 — 항상 최신 1장만 유효
-  for (const s of data.schedules) {
-    if (s.memberId === memberId) s.isActive = false;
-  }
-  const schedule: Schedule = {
-    id: randomUUID(),
-    memberId,
-    label: "내 시간표",
-    source: "image",
-    status: "uploaded",
-    imageFile: fileName,
-    imageWidth: meta.width,
-    imageHeight: meta.height,
-    blocks: [],
-    isActive: true,
-    createdAt: new Date().toISOString(),
-  };
-  data.schedules.push(schedule);
-  await write(data);
-  return schedule;
+    const data = await read();
+    // 기존 시간표는 비활성화 — 항상 최신 1장만 유효
+    for (const s of data.schedules) {
+      if (s.memberId === memberId) s.isActive = false;
+    }
+    const schedule: Schedule = {
+      id: randomUUID(),
+      memberId,
+      label: "내 시간표",
+      source: "image",
+      status: "uploaded",
+      imageFile: fileName,
+      imageWidth: meta.width,
+      imageHeight: meta.height,
+      blocks: [],
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    };
+    data.schedules.push(schedule);
+    await write(data);
+    return schedule;
+  });
 }
 
 /** 업로드된 이미지의 절대 경로. Agent SDK 가 파일을 직접 읽는 데 쓴다. */
@@ -235,26 +269,28 @@ export function scheduleImagePath(schedule: Schedule): string | null {
 
 /** 에타 시간표 이미지가 없는 사람을 위해, 빈 시간표를 만들어 직접 입력하게 한다. */
 export async function createManualSchedule(memberId: string): Promise<Schedule> {
-  const data = await read();
-  for (const s of data.schedules) {
-    if (s.memberId === memberId) s.isActive = false;
-  }
-  const schedule: Schedule = {
-    id: randomUUID(),
-    memberId,
-    label: "내 시간표",
-    source: "manual",
-    status: "manual",
-    imageFile: null,
-    imageWidth: null,
-    imageHeight: null,
-    blocks: [],
-    isActive: true,
-    createdAt: new Date().toISOString(),
-  };
-  data.schedules.push(schedule);
-  await write(data);
-  return schedule;
+  return withLock(async () => {
+    const data = await read();
+    for (const s of data.schedules) {
+      if (s.memberId === memberId) s.isActive = false;
+    }
+    const schedule: Schedule = {
+      id: randomUUID(),
+      memberId,
+      label: "내 시간표",
+      source: "manual",
+      status: "manual",
+      imageFile: null,
+      imageWidth: null,
+      imageHeight: null,
+      blocks: [],
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    };
+    data.schedules.push(schedule);
+    await write(data);
+    return schedule;
+  });
 }
 
 export async function readScheduleImage(schedule: Schedule): Promise<Buffer | null> {
@@ -267,11 +303,13 @@ export async function readScheduleImage(schedule: Schedule): Promise<Buffer | nu
 }
 
 export async function deactivateSchedule(memberId: string) {
-  const data = await read();
-  for (const s of data.schedules) {
-    if (s.memberId === memberId) s.isActive = false;
-  }
-  await write(data);
+  return withLock(async () => {
+    const data = await read();
+    for (const s of data.schedules) {
+      if (s.memberId === memberId) s.isActive = false;
+    }
+    await write(data);
+  });
 }
 
 /** 검토를 마친 블록을 저장하고 상태를 parsed 로 올린다. */
@@ -279,14 +317,16 @@ export async function saveScheduleBlocks(
   memberId: string,
   blocks: Omit<ScheduleBlock, "id">[],
 ): Promise<Schedule | null> {
-  const data = await read();
-  const schedule = data.schedules.find((s) => s.memberId === memberId && s.isActive);
-  if (!schedule) return null;
+  return withLock(async () => {
+    const data = await read();
+    const schedule = data.schedules.find((s) => s.memberId === memberId && s.isActive);
+    if (!schedule) return null;
 
-  schedule.blocks = blocks.map((b) => ({ ...b, id: randomUUID() }));
-  schedule.status = "parsed";
-  await write(data);
-  return schedule;
+    schedule.blocks = blocks.map((b) => ({ ...b, id: randomUUID() }));
+    schedule.status = "parsed";
+    await write(data);
+    return schedule;
+  });
 }
 
 // ── 연습 일정 ─────────────────────────────────────────────
@@ -297,22 +337,24 @@ export async function createEvent(input: {
   dates: string[];
   durationMin: number;
 }): Promise<MeetEvent> {
-  const data = await read();
-  const event: MeetEvent = {
-    id: randomUUID(),
-    createdBy: input.createdBy,
-    title: input.title.trim(),
-    status: "polling",
-    dates: [...input.dates].sort(),
-    durationMin: input.durationMin,
-    confirmedDate: null,
-    confirmedStartMin: null,
-    place: null,
-    createdAt: new Date().toISOString(),
-  };
-  data.events.push(event);
-  await write(data);
-  return event;
+  return withLock(async () => {
+    const data = await read();
+    const event: MeetEvent = {
+      id: randomUUID(),
+      createdBy: input.createdBy,
+      title: input.title.trim(),
+      status: "polling",
+      dates: [...input.dates].sort(),
+      durationMin: input.durationMin,
+      confirmedDate: null,
+      confirmedStartMin: null,
+      place: null,
+      createdAt: new Date().toISOString(),
+    };
+    data.events.push(event);
+    await write(data);
+    return event;
+  });
 }
 
 export async function listEvents(): Promise<MeetEvent[]> {
@@ -345,12 +387,14 @@ export async function saveResponses(
   memberId: string,
   answers: { slotKey: string; answer: "yes" | "no" }[],
 ): Promise<void> {
-  const data = await read();
-  data.responses = data.responses.filter(
-    (r) => !(r.eventId === eventId && r.memberId === memberId),
-  );
-  data.responses.push(...answers.map((a) => ({ eventId, memberId, ...a })));
-  await write(data);
+  return withLock(async () => {
+    const data = await read();
+    data.responses = data.responses.filter(
+      (r) => !(r.eventId === eventId && r.memberId === memberId),
+    );
+    data.responses.push(...answers.map((a) => ({ eventId, memberId, ...a })));
+    await write(data);
+  });
 }
 
 export async function confirmEvent(
@@ -359,34 +403,65 @@ export async function confirmEvent(
   startMin: number,
   place: string | null,
 ): Promise<MeetEvent | null> {
-  const data = await read();
-  const event = data.events.find((e) => e.id === eventId);
-  if (!event) return null;
-  event.status = "confirmed";
-  event.confirmedDate = date;
-  event.confirmedStartMin = startMin;
-  event.place = place?.trim() || null;
-  await write(data);
-  return event;
+  return withLock(async () => {
+    const data = await read();
+    const event = data.events.find((e) => e.id === eventId);
+    if (!event) return null;
+    event.status = "confirmed";
+    event.confirmedDate = date;
+    event.confirmedStartMin = startMin;
+    event.place = place?.trim() || null;
+    await write(data);
+    return event;
+  });
 }
 
 export async function cancelEvent(eventId: string): Promise<void> {
-  const data = await read();
-  const event = data.events.find((e) => e.id === eventId);
-  if (!event) return;
-  event.status = "cancelled";
-  await write(data);
+  return withLock(async () => {
+    const data = await read();
+    const event = data.events.find((e) => e.id === eventId);
+    if (!event) return;
+    event.status = "cancelled";
+    await write(data);
+  });
 }
 
 // ── 홈 튜토리얼 ────────────────────────────────────────────
 
-/** 표시명은 로그인 아이디이기도 하다. 중복 확인은 호출하는 쪽에서 한다. */
-export async function renameMember(memberId: string, displayName: string): Promise<void> {
-  const data = await read();
-  const member = data.members.find((m) => m.id === memberId);
-  if (!member) return;
-  member.displayName = displayName.trim();
-  await write(data);
+/**
+ * PIN 교체. sessionVersion 을 올려서 기존 로그인을 전부 끊는다 —
+ * 다른 기기에 남아 있는 세션도 requireMember() 에서 걸러진다.
+ */
+export async function changeMemberPin(memberId: string, pinHash: string): Promise<void> {
+  return withLock(async () => {
+    const data = await read();
+    const member = data.members.find((m) => m.id === memberId);
+    if (!member) return;
+    member.pinHash = pinHash;
+    member.sessionVersion += 1;
+    await write(data);
+  });
+}
+
+/**
+ * 표시명 변경. 중복 확인도 잠금 안에서 함께 한다 — 확인과 저장 사이에
+ * 다른 사람이 같은 이름으로 가입하는 것을 막는다. 이미 쓰는 이름이면 false.
+ */
+export async function renameMember(memberId: string, displayName: string): Promise<boolean> {
+  return withLock(async () => {
+    const data = await read();
+    const name = displayName.trim();
+    const taken = data.members.some(
+      (m) => m.id !== memberId && m.isActive && sameName(m.displayName, name),
+    );
+    if (taken) return false;
+
+    const member = data.members.find((m) => m.id === memberId);
+    if (!member) return false;
+    member.displayName = name;
+    await write(data);
+    return true;
+  });
 }
 
 export async function setMemberGroups(
@@ -394,18 +469,22 @@ export async function setMemberGroups(
   groupRole: GroupRole,
   groupNos: number[],
 ): Promise<void> {
-  const data = await read();
-  const member = data.members.find((m) => m.id === memberId);
-  if (!member) return;
-  member.groupRole = groupRole;
-  member.groupNos = [...new Set(groupNos)].sort((a, b) => a - b);
-  await write(data);
+  return withLock(async () => {
+    const data = await read();
+    const member = data.members.find((m) => m.id === memberId);
+    if (!member) return;
+    member.groupRole = groupRole;
+    member.groupNos = [...new Set(groupNos)].sort((a, b) => a - b);
+    await write(data);
+  });
 }
 
 export async function completeTutorial(memberId: string): Promise<void> {
-  const data = await read();
-  const member = data.members.find((m) => m.id === memberId);
-  if (!member) return;
-  member.tutorialDoneAt = new Date().toISOString();
-  await write(data);
+  return withLock(async () => {
+    const data = await read();
+    const member = data.members.find((m) => m.id === memberId);
+    if (!member) return;
+    member.tutorialDoneAt = new Date().toISOString();
+    await write(data);
+  });
 }

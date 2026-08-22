@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { DAY_LABELS, GridFrame, SLOT_PX, formatMin } from "./schedule-grid";
+import { DAY_LABELS, GridFrame, SLOT_PX } from "./schedule-grid";
+import { formatMin } from "@/lib/time";
 import type { FreeTable } from "@/lib/free-time";
 
 type Props = {

@@ -145,16 +145,16 @@ export function HomeTutorial({
 
       {/* ── 3단계: 우리 조에 누가 들어와 있는지 ── */}
       {step === 3 ? (
-        <Card>
+        <div>
           <GroupTabs groups={myGroups} meId={meId} />
 
           {/* 한 번 보고 지나가는 화면이라 '앞으로 이렇게 됩니다' 식의 안내는 두지 않는다. */}
-          <div className="mt-4">
+          <div className="mt-3">
             <Button full disabled={pending} onClick={done}>
               연습 일정 잡기
             </Button>
           </div>
-        </Card>
+        </div>
       ) : null}
 
       {step === 2 && timetable !== "parsed" ? (

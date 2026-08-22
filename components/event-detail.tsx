@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { cancelMeetEvent, confirmMeetEvent, saveMyAnswers } from "@/actions/events";
 import { formatDate } from "@/lib/candidates";
-import { formatMin } from "./schedule-grid";
+import { formatMin } from "@/lib/time";
 import { Badge, Button, Card, ErrorText } from "./ui";
 
 type CandidateView = {

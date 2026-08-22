@@ -4,32 +4,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { checkName, signIn, signUp } from "@/actions/auth";
 import { randomNickname } from "@/lib/nickname";
-import { ErrorText } from "./ui";
+import { ErrorText, EyeIcon } from "./ui";
 
 type Step =
   | { kind: "name" }
   | { kind: "login"; name: string }
   | { kind: "create"; name: string };
-
-function EyeIcon({ open }: { open: boolean }) {
-  return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
-      <circle cx="12" cy="12" r="3.2" />
-      {open ? null : <path d="M4 20 20 4" />}
-    </svg>
-  );
-}
 
 /** 큰 제목 + 회색 부제목 */
 function Heading({ title, subtitle }: { title: string; subtitle: string }) {
@@ -79,6 +59,7 @@ export function JoinForm() {
   const [pin2, setPin2] = useState("");
   const [error, setError] = useState("");
   const [showPin, setShowPin] = useState(false);
+  const [nameCheck, setNameCheck] = useState<null | { ok: boolean; text: string }>(null);
   const pinRef = useRef<HTMLInputElement>(null);
   const pin2Ref = useRef<HTMLInputElement>(null);
 
@@ -97,6 +78,22 @@ export function JoinForm() {
       if (focused) el.setSelectionRange(value.length, value.length);
     }
   }, [showPin]);
+
+  function checkDuplicate() {
+    setError("");
+    start(async () => {
+      const res = await checkName(name);
+      if (!res.ok) {
+        setNameCheck({ ok: false, text: res.error });
+        return;
+      }
+      setNameCheck(
+        res.exists
+          ? { ok: false, text: "이미 등록된 이름이에요." }
+          : { ok: true, text: "쓸 수 있는 닉네임이에요." },
+      );
+    });
+  }
 
   function submitName(e: React.FormEvent) {
     e.preventDefault();
@@ -159,24 +156,51 @@ export function JoinForm() {
             <UnderlineField
               label="닉네임"
               action={
-                <button
-                  type="button"
-                  onClick={() => setName((prev) => randomNickname(prev))}
-                  className="text-[13px] font-semibold text-accent"
-                >
-                  랜덤 추천
-                </button>
+                <span className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={checkDuplicate}
+                    disabled={pending || name.trim().length === 0}
+                    className="text-[13px] font-semibold text-accent disabled:opacity-40"
+                  >
+                    중복 확인
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setName((prev) => randomNickname(prev));
+                      setNameCheck(null);
+                    }}
+                    className="text-[13px] font-semibold text-accent"
+                  >
+                    랜덤 추천
+                  </button>
+                </span>
               }
             >
               <input
                 autoFocus
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  // 이름이 바뀌면 앞서 본 결과는 더 이상 이 이름의 결과가 아니다
+                  setNameCheck(null);
+                }}
                 placeholder="통통튀는 베이스"
                 maxLength={12}
                 className={inputClass}
               />
             </UnderlineField>
+
+            {nameCheck ? (
+              <p
+                className={`mt-3 text-[13px] font-bold ${
+                  nameCheck.ok ? "text-accent" : "text-danger"
+                }`}
+              >
+                {nameCheck.text}
+              </p>
+            ) : null}
           </div>
         </>
       ) : (

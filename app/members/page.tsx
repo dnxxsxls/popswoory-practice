@@ -15,7 +15,7 @@ export default async function MembersPage() {
     getMember(me.memberId),
   ]);
 
-  const registered = new Set(schedules.filter((s) => s.blocks.length > 0).map((s) => s.memberId));
+  const blocksOf = new Map(schedules.map((s) => [s.memberId, s.blocks]));
   const myGroupNos = meRecord?.groupNos ?? [];
 
   const mine: RosterMember | null = meRecord
@@ -23,7 +23,7 @@ export default async function MembersPage() {
         id: meRecord.id,
         displayName: meRecord.displayName,
         mentor: meRecord.groupRole === "mentor",
-        ready: registered.has(meRecord.id),
+        blocks: blocksOf.get(meRecord.id) ?? [],
       }
     : null;
 
@@ -51,7 +51,7 @@ export default async function MembersPage() {
         id: m.id,
         displayName: m.displayName,
         mentor: m.groupRole === "mentor",
-        ready: registered.has(m.id),
+        blocks: blocksOf.get(m.id) ?? [],
       })),
   }));
 
@@ -60,33 +60,29 @@ export default async function MembersPage() {
       title="우리 조"
       subtitle={myGroupNos.length > 1 ? `${myGroupNos.join("조 · ")}조 담당` : undefined}
     >
-      {/* 내 프로필은 명단에서 빼서 위에 따로 둔다. 매번 들어오는 탭이라
-          내 상태부터 눈에 들어오는 편이 낫다. */}
-      <Card>
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[13px] font-bold text-accent">내 정보</p>
-          <ProfileEdit
-            displayName={mine.displayName}
-            groupRole={mine.mentor ? "mentor" : "member"}
-            groupNos={myGroupNos}
-          />
-        </div>
-        <div className="mt-2">
-          <RosterRow member={mine} />
-        </div>
-      </Card>
+      {/* 제목과 동작은 카드 바깥에 둔다 — 카드 안은 내용만. */}
+      <div className="flex items-center justify-between gap-3 px-1">
+        <h2 className="text-[17px] font-bold">내 정보</h2>
+        <ProfileEdit
+          displayName={mine.displayName}
+          groupRole={mine.mentor ? "mentor" : "member"}
+          groupNos={myGroupNos}
+        />
+      </div>
 
       <Card>
-        <GroupTabs
-          groups={groups}
-          meId={me.memberId}
-          excludeMe
-          emptyText="같은 조 사람이 가입하면 여기에 표시돼요."
-        />
+        <RosterRow member={mine} />
       </Card>
+
+      <GroupTabs
+        groups={groups}
+        meId={me.memberId}
+        excludeMe
+        emptyText="같은 조 사람이 가입하면 여기에 표시돼요."
+      />
 
       <p className="px-1 pt-1 text-[13px] leading-relaxed text-muted">
-        시간표 이미지는 본인만 볼 수 있어요. 다른 멤버에게는 등록 여부만 표시됩니다.
+        업로드한 원본 이미지는 본인만 볼 수 있어요. 조원에게는 정리된 수업 시간만 보입니다.
       </p>
     </AppShell>
   );

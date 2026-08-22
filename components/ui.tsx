@@ -12,17 +12,24 @@ export function Card({
 
 type ButtonProps = ComponentProps<"button"> & {
   variant?: "primary" | "secondary" | "ghost";
+  /** md = 화면 하단의 주 버튼 / sm = 목록·제목 옆에 붙는 작은 동작 */
+  size?: "md" | "sm";
   full?: boolean;
 };
 
 export function Button({
   variant = "primary",
+  size = "md",
   full = false,
   className = "",
   ...props
 }: ButtonProps) {
   const base =
-    "inline-flex h-14 items-center justify-center gap-2 rounded-2xl px-5 text-[17px] font-bold disabled:opacity-40 disabled:pointer-events-none";
+    "inline-flex items-center justify-center gap-2 font-bold disabled:opacity-40 disabled:pointer-events-none";
+  const sizes = {
+    md: "h-14 rounded-2xl px-5 text-[17px]",
+    sm: "h-9 rounded-xl px-3.5 text-[13px]",
+  } as const;
   const variants = {
     primary: "bg-accent text-accent-fg hover:bg-accent-press",
     secondary: "bg-surface-2 text-fg-2 hover:brightness-95",
@@ -32,7 +39,7 @@ export function Button({
   return (
     <button
       {...props}
-      className={`${base} ${variants[variant]} ${full ? "w-full" : ""} ${className}`}
+      className={`${base} ${sizes[size]} ${variants[variant]} ${full ? "w-full" : ""} ${className}`}
     />
   );
 }
@@ -90,5 +97,26 @@ export function Badge({
     >
       {children}
     </span>
+  );
+}
+
+/** PIN 보기/숨기기 토글에 쓰는 눈 아이콘 */
+export function EyeIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="3.2" />
+      {open ? null : <path d="M4 20 20 4" />}
+    </svg>
   );
 }

@@ -8,10 +8,10 @@ import {
   GridFrame,
   PERSONAL_COLOR,
   SLOT_PX,
-  formatMin,
   gridBounds,
   blockEdges,
 } from "./schedule-grid";
+import { formatMin } from "@/lib/time";
 
 export const SLOT = 30;
 

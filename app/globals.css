@@ -75,13 +75,27 @@ h3 {
   letter-spacing: -0.03em;
 }
 
-/* iOS 에서 입력 시 자동 확대 방지 */
-input,
-button,
-textarea,
-select {
-  font: inherit;
-  font-size: max(16px, 1em);
+/*
+ * 요소 기본값은 @layer base 안에 둔다. 레이어 밖에 쓰면 Tailwind 유틸리티
+ * (utilities 레이어)보다 우선해서, text-[13px] 같은 클래스가 먹지 않는다.
+ */
+@layer base {
+  input,
+  button,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  /*
+   * iOS 는 16px 미만 입력칸에 포커스하면 화면을 확대한다. 입력칸에만 걸어야 한다.
+   * 버튼까지 걸면 13px 로 지정한 작은 버튼이 16px 로 커진다.
+   */
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em);
+  }
 }
 
 input[type="number"]::-webkit-outer-spin-button,
