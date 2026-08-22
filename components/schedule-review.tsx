@@ -28,9 +28,15 @@ export function ScheduleReview({
   initial,
   hasImage,
   doneHref,
+  onPhaseChange,
+  showStepLabel = true,
 }: {
   initial: ScheduleBlock[];
   hasImage: boolean;
+  /** 지금 어느 단계인지 밖에 알린다 — 온보딩 진행바와 제목이 이 값을 따라간다 */
+  onPhaseChange?: (phase: "analyze" | Step) => void;
+  /** 온보딩은 셸이 단계를 표시하므로 자체 라벨을 끈다 */
+  showStepLabel?: boolean;
   /**
    * 확정 후 곧바로 이동할 경로. 온보딩처럼 다음 단계가 정해져 있을 때 넘긴다.
    * 없으면 완료 안내를 띄우고 사용자가 고르게 한다.
@@ -44,6 +50,11 @@ export function ScheduleReview({
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [saving, startSave] = useTransition();
+
+  // 분석 중에는 화면 전체가 대기 카드라 step 이 의미 없다 — 그때는 analyze 로 알린다.
+  useEffect(() => {
+    onPhaseChange?.(analyzing ? "analyze" : step);
+  }, [analyzing, step, onPhaseChange]);
   const [saved, setSaved] = useState(false);
 
   // 저장된 블록이 없고 이미지가 있으면 들어오자마자 분석
@@ -167,7 +178,9 @@ export function ScheduleReview({
 
   return (
     <div className="space-y-4">
-      <p className="px-1 text-[13px] font-bold text-accent">{STEP_LABEL[step]}</p>
+      {showStepLabel ? (
+        <p className="px-1 text-[13px] font-bold text-accent">{STEP_LABEL[step]}</p>
+      ) : null}
 
       {error ? (
         <Card className="ring-2 ring-danger">

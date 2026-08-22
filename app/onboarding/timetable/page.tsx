@@ -13,10 +13,9 @@ export default async function OnboardingTimetablePage() {
 
   return (
     <OnboardingShell
-      step={2}
-      label="시간표 등록"
-      title={"시간표를\n올려주세요"}
-      subtitle="한 번만 올려두면 이후 모든 연습 일정에 자동으로 반영돼요."
+      step="upload"
+      title="시간표를 올려주세요"
+      subtitle="한 번만 올려두면 이후 연습 일정에 자동 반영돼요."
     >
       <TimetableUploader mode="onboarding" reviewHref="/onboarding/review" />
     </OnboardingShell>

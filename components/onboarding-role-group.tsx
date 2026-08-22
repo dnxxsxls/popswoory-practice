@@ -44,8 +44,7 @@ export function OnboardingRoleGroup({ displayName }: { displayName: string }) {
   if (askingRole) {
     return (
       <OnboardingShell
-        step={1}
-        label="행사 및 조 확인"
+        step="role"
         title={
           <>
             반가워요, {displayName} 님!
@@ -65,8 +64,7 @@ export function OnboardingRoleGroup({ displayName }: { displayName: string }) {
 
   return (
     <OnboardingShell
-      step={1}
-      label="행사 및 조 확인"
+      step="group"
       title={value.role === "mentor" ? "맡고 있는 조를\n모두 골라주세요" : "어느 조인가요?"}
       subtitle={
         value.role === "mentor"

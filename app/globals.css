@@ -130,7 +130,38 @@ input[type="number"]::-webkit-inner-spin-button {
   animation: msg-in 0.35s ease-out;
 }
 
-/* 온보딩 음표가 제자리에서 위아래로 떠다닌다 */
+/*
+ * 온보딩 마스코트 — 화면 밑에서 슉 올라온 뒤 최종 각도로 자리를 잡는다.
+ * 이동과 회전을 한 애니메이션에서 같이 다뤄야 transform 이 서로 덮어쓰지 않는다.
+ */
+@keyframes mascot-rise {
+  from {
+    transform: translate(-38%, 55%) rotate(-4deg);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-38%, 15%) rotate(-12deg);
+    opacity: 1;
+  }
+}
+
+.mascot-rise {
+  transform: translate(-38%, 15%) rotate(-12deg);
+  animation: mascot-rise 0.75s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 음표는 조금 늦게 따라 올라온 뒤 제자리에서 떠다닌다 */
+@keyframes note-rise {
+  from {
+    transform: translateY(90px) rotate(0deg);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) rotate(6deg);
+    opacity: 1;
+  }
+}
+
 @keyframes note-float {
   0%,
   100% {
@@ -141,13 +172,20 @@ input[type="number"]::-webkit-inner-spin-button {
   }
 }
 
-.note-float {
-  animation: note-float 2.6s ease-in-out infinite;
+.note-rise {
+  animation:
+    note-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both,
+    note-float 2.6s ease-in-out 0.85s infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .note-float {
+  .mascot-rise {
     animation: none;
+  }
+
+  .note-rise {
+    animation: none;
+    transform: rotate(6deg);
   }
 }
 

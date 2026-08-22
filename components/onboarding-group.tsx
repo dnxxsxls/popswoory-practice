@@ -22,8 +22,7 @@ export function OnboardingGroup({ groups, meId }: { groups: GroupRoster[]; meId:
 
   return (
     <OnboardingShell
-      step={3}
-      label="우리 조"
+      step="roster"
       title={"같은 조 사람들이에요"}
       subtitle="이 조원들과 함께 연습 일정을 잡게 돼요."
       footer={
