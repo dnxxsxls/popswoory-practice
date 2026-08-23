@@ -1,4 +1,5 @@
 import type { ScheduleBlock } from "./store";
+import { DAY_END_HOUR, DAY_START_HOUR } from "./time";
 
 /**
  * 멤버들의 시간표를 겹쳐 "다 같이 비어 있는 시간"을 계산한다.
@@ -43,8 +44,10 @@ export function buildFreeTable(members: MemberSchedule[]): FreeTable {
   const allBlocks = withSchedule.flatMap((m) => m.blocks);
 
   const maxWeekday = allBlocks.reduce((acc, b) => Math.max(acc, b.weekday), 4); // 최소 월~금
-  const startHour = Math.min(9, ...allBlocks.map((b) => Math.floor(b.startMin / 60)));
-  const endHour = Math.max(22, ...allBlocks.map((b) => Math.ceil(b.endMin / 60)));
+  // 후보로 내놓을 시간대는 09–22 로 고정. 누군가의 8시 수업 때문에 새벽 칸이
+  // 생기면 아무도 고르지 않을 줄만 늘어난다.
+  const startHour = DAY_START_HOUR;
+  const endHour = DAY_END_HOUR;
 
   const dayCount = maxWeekday + 1;
   const perDay = ((endHour - startHour) * 60) / SLOT_MIN;

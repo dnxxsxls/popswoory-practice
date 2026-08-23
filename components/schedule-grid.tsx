@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { formatMin } from "@/lib/time";
+import { DAY_END_HOUR, DAY_START_HOUR, formatMin } from "@/lib/time";
 
 export const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 
@@ -49,12 +49,16 @@ export function blockEdges<T extends { startMin: number; endMin: number; kind?: 
   };
 }
 
-/** 블록에 맞춰 표시할 요일 수와 시간 범위를 정한다. */
-export function gridBounds(blocks: { weekday: number; startMin: number; endMin: number }[]) {
+/**
+ * 표시할 요일 수와 시간 범위를 정한다.
+ *
+ * 시간 범위는 09–22 로 고정이다. 예전에는 블록에 맞춰 늘렸는데, 8시 수업 하나가
+ * 있으면 격자 전체가 한 시간씩 밀려 낮 시간이 좁아졌다. 창을 벗어나는 블록은
+ * 저장 전에 잘라내므로(lib/time.ts clipToDay) 여기서 가려질 블록은 없다.
+ */
+export function gridBounds(blocks: { weekday: number }[]) {
   const maxWeekday = blocks.reduce((acc, b) => Math.max(acc, b.weekday), 4); // 최소 월~금
-  const startHour = Math.min(9, ...blocks.map((b) => Math.floor(b.startMin / 60)));
-  const endHour = Math.max(22, ...blocks.map((b) => Math.ceil(b.endMin / 60)));
-  return { dayCount: maxWeekday + 1, startHour, endHour };
+  return { dayCount: maxWeekday + 1, startHour: DAY_START_HOUR, endHour: DAY_END_HOUR };
 }
 
 /**

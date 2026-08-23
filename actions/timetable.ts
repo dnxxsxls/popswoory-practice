@@ -8,6 +8,7 @@ import {
   saveScheduleBlocks,
   scheduleImagePath,
 } from "@/lib/store";
+import { clipToDay } from "@/lib/time";
 import { analyzeTimetableImage, type VisionBlock } from "@/lib/vision";
 
 export type AnalyzeResult =
@@ -58,7 +59,14 @@ export async function saveMyTimetableBlocks(
     return { ok: false, message: parsed.error.issues[0]?.message ?? "입력이 올바르지 않아요." };
   }
 
-  const saved = await saveScheduleBlocks(me.memberId, parsed.data);
+  // 저장되는 건 언제나 09–22 안이다. 격자가 그 범위만 그리니 화면에서 넘어올 일은
+  // 없지만, 여기서 한 번 더 잘라야 저장소와 화면이 어긋나지 않는다.
+  const blocksInDay = parsed.data.flatMap((b) => {
+    const clipped = clipToDay(b.startMin, b.endMin);
+    return clipped ? [{ ...b, startMin: clipped.startMin, endMin: clipped.endMin }] : [];
+  });
+
+  const saved = await saveScheduleBlocks(me.memberId, blocksInDay);
   if (!saved) return { ok: false, message: "시간표를 찾지 못했어요." };
 
   return { ok: true };

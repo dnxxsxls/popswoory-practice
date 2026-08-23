@@ -2,6 +2,7 @@ import "server-only";
 import fs from "node:fs/promises";
 import { query, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
+import { clipToDay } from "./time";
 
 /**
  * 시간표 이미지 → 수업 블록 추출.
@@ -113,9 +114,15 @@ function sanitize(raw: unknown[]): VisionBlock[] {
     const rawEnd = toMinutes(b.end);
     if (rawStart === null || rawEnd === null || rawStart >= rawEnd) continue;
 
-    const startMin = snap(rawStart);
+    const snapped = snap(rawStart);
     // 스냅 때문에 길이가 0이 되면 최소 한 칸(30분)은 남긴다
-    const endMin = Math.max(snap(rawEnd), startMin + SNAP);
+    const snappedEnd = Math.max(snap(rawEnd), snapped + SNAP);
+
+    // 9시 이전·10시 이후는 읽기는 하되 정리 대상이 아니다. 창에 걸친 만큼만 남기고,
+    // 창 밖으로 완전히 벗어난 수업은 여기서 버린다.
+    const clipped = clipToDay(snapped, snappedEnd);
+    if (!clipped) continue;
+    const { startMin, endMin } = clipped;
 
     // 6시간을 넘는 블록은 파싱 오류일 가능성이 높다 — 버리지 않고 low 로 강등
     const tooLong = endMin - startMin > 6 * 60;
@@ -125,7 +132,9 @@ function sanitize(raw: unknown[]): VisionBlock[] {
       startMin,
       endMin,
       title: b.title.trim().slice(0, 30),
-      confidence: tooLong || b.confidence.toLowerCase() !== "high" ? "low" : "high",
+      // 잘려나간 블록은 사람이 한 번 보고 넘어가야 한다 — 검토 화면에서 강조된다
+      confidence:
+        tooLong || clipped.clipped || b.confidence.toLowerCase() !== "high" ? "low" : "high",
       kind: "class",
     });
   }
