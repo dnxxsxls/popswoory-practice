@@ -370,3 +370,81 @@ input[type="number"]::-webkit-inner-spin-button {
     animation: none;
   }
 }
+
+/*
+ * 숫자가 위아래로 굴러 바뀐다. 늘리면 새 값이 아래에서 올라오고 옛 값은 위로 빠지고,
+ * 줄이면 반대다. 어느 쪽으로 움직였는지가 눈에 남는다.
+ */
+@keyframes roll-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes roll-out-up {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes roll-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes roll-out-down {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+
+.roll-in-up {
+  animation: roll-in-up 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.roll-out-up {
+  animation: roll-out-up 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.roll-in-down {
+  animation: roll-in-down 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.roll-out-down {
+  animation: roll-out-down 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roll-in-up,
+  .roll-in-down {
+    animation: none;
+  }
+
+  /* 밀려나는 값은 그냥 사라진다. 안 그러면 새 값 위에 겹쳐 보인다. */
+  .roll-out-up,
+  .roll-out-down {
+    animation: none;
+    opacity: 0;
+  }
+}

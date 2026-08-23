@@ -1,22 +1,26 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createMeetEvent } from "@/actions/events";
 import { Button, ErrorText, Field, Input } from "./ui";
 
 const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
-/** 소요시간 조절 폭과 범위. 기본은 1시간에서 시작한다. */
+/** 소요시간 조절 폭과 범위. 기본은 2시간에서 시작한다. */
 const DURATION_STEP = 30;
 const DURATION_MIN = 30;
 const DURATION_MAX = 360;
+const DURATION_DEFAULT = 120;
 
+/**
+ * 아이폰 타이머처럼 분을 늘 붙여 "2시간 00분" 으로 읽는다. 다만 한 시간이 안 될
+ * 때까지 "0시간 30분" 이라고 쓰지는 않는다 — 우리말로 읽으면 어색하다.
+ */
 function formatDuration(min: number): string {
   const h = Math.floor(min / 60);
   const m = min % 60;
   if (h === 0) return `${m}분`;
-  if (m === 0) return `${h}시간`;
-  return `${h}시간 ${m}분`;
+  return `${h}시간 ${String(m).padStart(2, "0")}분`;
 }
 
 /** 가을발표회 — 달력에서 강조 표시한다 */
@@ -74,7 +78,27 @@ export function EventCreateForm() {
   const [title, setTitle] = useState("");
   // 연습 하나는 하루짜리다. 고르지 않았으면 빈 문자열.
   const [date, setDate] = useState("");
-  const [durationMin, setDuration] = useState(60);
+  const [durationMin, setDuration] = useState(DURATION_DEFAULT);
+  /**
+   * 방금 밀려난 값과 방향. 늘리면 아래에서 위로, 줄이면 위에서 아래로 굴러간다.
+   * 애니메이션이 끝나면 지워서 다음 번에 다시 걸리게 한다.
+   */
+  const [rolled, setRolled] = useState<{ value: number; up: boolean } | null>(null);
+
+  // 모션을 끈 환경에서는 animationend 가 오지 않는다. 시간으로 지워야 밀려난 값이
+  // 새 값 위에 겹친 채 남지 않는다.
+  useEffect(() => {
+    if (!rolled) return;
+    const t = setTimeout(() => setRolled(null), 260);
+    return () => clearTimeout(t);
+  }, [rolled]);
+
+  function stepDuration(delta: number) {
+    const next = Math.min(DURATION_MAX, Math.max(DURATION_MIN, durationMin + delta));
+    if (next === durationMin) return;
+    setRolled({ value: durationMin, up: delta > 0 });
+    setDuration(next);
+  }
   const [error, setError] = useState("");
   const [monthOffset, setMonthOffset] = useState(0);
   /** 달력이 어느 쪽에서 밀려 들어올지. 누른 화살표를 따라간다. */
@@ -220,19 +244,44 @@ export function EventCreateForm() {
         <div className="flex items-center justify-between rounded-2xl bg-surface p-3">
           <button
             type="button"
-            onClick={() => setDuration((v) => Math.max(DURATION_MIN, v - DURATION_STEP))}
+            onClick={() => stepDuration(-DURATION_STEP)}
             disabled={durationMin <= DURATION_MIN}
             aria-label="30분 줄이기"
             className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-2 text-2xl font-bold text-fg-2 disabled:opacity-30"
           >
             −
           </button>
-          <span aria-live="polite" className="text-[20px] font-extrabold tabular-nums">
-            {formatDuration(durationMin)}
+          {/*
+            숫자가 위아래로 굴러간다. 밀려나는 값과 들어오는 값이 같은 자리를
+            지나가야 해서 둘 다 절대 배치하고, 넘치는 부분은 상자가 잘라낸다.
+          */}
+          <span
+            aria-live="polite"
+            className="relative block h-8 flex-1 overflow-hidden text-center text-[20px] font-extrabold tabular-nums"
+          >
+            {rolled ? (
+              <span
+                key={`out-${rolled.value}`}
+                aria-hidden="true"
+                className={`absolute inset-0 flex items-center justify-center ${
+                  rolled.up ? "roll-out-up" : "roll-out-down"
+                }`}
+              >
+                {formatDuration(rolled.value)}
+              </span>
+            ) : null}
+            <span
+              key={durationMin}
+              className={`absolute inset-0 flex items-center justify-center ${
+                rolled ? (rolled.up ? "roll-in-up" : "roll-in-down") : ""
+              }`}
+            >
+              {formatDuration(durationMin)}
+            </span>
           </span>
           <button
             type="button"
-            onClick={() => setDuration((v) => Math.min(DURATION_MAX, v + DURATION_STEP))}
+            onClick={() => stepDuration(DURATION_STEP)}
             disabled={durationMin >= DURATION_MAX}
             aria-label="30분 늘리기"
             className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-2 text-2xl font-bold text-fg-2 disabled:opacity-30"
