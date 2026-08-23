@@ -2,9 +2,14 @@
 
 import Image from "next/image";
 import { useRef, useState } from "react";
+import { Sheet } from "./sheet";
 
 /** zoom: 작게 보이는 컷은 확대한다. origin 은 강조 부분이 잘리지 않도록 잡는다. */
-const STEPS: { text: string; src: string; zoom?: { scale: number; origin: string } }[] = [
+const STEPS: {
+  text: string;
+  src: string;
+  zoom?: { scale: number; origin: string };
+}[] = [
   { text: "에브리타임 앱을 열어주세요", src: "/guide/step-1.png" },
   { text: "하단 탭에서 [시간표]를 눌러주세요", src: "/guide/step-2.png" },
   {
@@ -101,138 +106,134 @@ export function EverytimeGuide() {
         </svg>
       </button>
 
-      {open ? (
-        <>
+      <Sheet open={open} onClose={close} padding="flush">
+        <div className="flex items-center justify-between px-1">
+          <h2 className="text-[19px] font-extrabold">
+            에타에서 시간표 가져오기
+          </h2>
           <button
             type="button"
-            aria-label="닫기"
             onClick={close}
-            className="fixed inset-0 z-30 bg-black/40"
-          />
-          <div className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md rounded-t-[28px] bg-surface px-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-4">
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-line" />
-
-            <div className="flex items-center justify-between px-1">
-              <h2 className="text-[19px] font-extrabold">에타에서 시간표 가져오기</h2>
-              <button
-                type="button"
-                onClick={close}
-                aria-label="닫기"
-                className="-mr-1 flex h-9 w-9 items-center justify-center rounded-full text-muted"
-              >
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  aria-hidden="true"
-                >
-                  <path d="M6 6l12 12M18 6L6 18" />
-                </svg>
-              </button>
-            </div>
-
-            {/* 숫자 + 안내 문구가 이미지 위에 온다 */}
-            {/* 이미지는 좌우 여백 없이 꽉 채운다 */}
-            <div
-              className="relative mt-5 touch-pan-y select-none overflow-hidden rounded-2xl bg-surface shadow-[0_2px_16px_rgba(0,0,0,0.07)]"
-              onPointerDown={(e) => {
-                startX.current = e.clientX;
-              }}
-              onPointerUp={(e) => {
-                if (startX.current === null) return;
-                const dx = e.clientX - startX.current;
-                startX.current = null;
-                if (dx <= -SWIPE_PX) go(1);
-                else if (dx >= SWIPE_PX) go(-1);
-              }}
+            aria-label="닫기"
+            className="-mr-1 flex h-9 w-9 items-center justify-center rounded-full text-muted"
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              aria-hidden="true"
             >
-              {/*
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
+
+        {/* 숫자 + 안내 문구가 이미지 위에 온다 */}
+        {/* 이미지는 좌우 여백 없이 꽉 채운다 */}
+        <div
+          className="relative mt-5 touch-pan-y select-none overflow-hidden rounded-2xl bg-surface shadow-[0_2px_16px_rgba(0,0,0,0.07)]"
+          onPointerDown={(e) => {
+            startX.current = e.clientX;
+          }}
+          onPointerUp={(e) => {
+            if (startX.current === null) return;
+            const dx = e.clientX - startX.current;
+            startX.current = null;
+            if (dx <= -SWIPE_PX) go(1);
+            else if (dx >= SWIPE_PX) go(-1);
+          }}
+        >
+          {/*
                 등장 애니메이션은 감싸는 요소에 건다. 같은 요소에 걸면 애니메이션의
                 transform 이 확대(scale)를 덮어써서, 도는 동안 작게 보이다가
                 끝나는 순간 튀어 커진다.
               */}
-              <span key={step} className="msg-in block overflow-hidden">
-                <Image
-                  src={current.src}
-                  alt=""
-                  width={1200}
-                  height={642}
-                  priority
-                  style={
-                    current.zoom
-                      ? {
-                          transform: `scale(${current.zoom.scale})`,
-                          transformOrigin: current.zoom.origin,
-                        }
-                      : undefined
-                  }
-                  className="block aspect-[1200/642] w-full object-cover"
-                />
-              </span>
+          <span key={step} className="msg-in block overflow-hidden">
+            <Image
+              src={current.src}
+              alt=""
+              width={1200}
+              height={642}
+              priority
+              style={
+                current.zoom
+                  ? {
+                      transform: `scale(${current.zoom.scale})`,
+                      transformOrigin: current.zoom.origin,
+                    }
+                  : undefined
+              }
+              className="block aspect-[1200/642] w-full object-cover"
+            />
+          </span>
 
-              <Arrow dir="prev" onClick={() => go(-1)} disabled={step === 0} />
-              <Arrow dir="next" onClick={() => go(1)} disabled={step === STEPS.length - 1} />
-            </div>
+          <Arrow dir="prev" onClick={() => go(-1)} disabled={step === 0} />
+          <Arrow
+            dir="next"
+            onClick={() => go(1)}
+            disabled={step === STEPS.length - 1}
+          />
+        </div>
 
-            <div className="mt-5 flex min-h-[52px] items-start gap-3 px-1">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[13px] font-bold text-accent">
-                {step + 1}
-              </span>
-              <p
-                key={step}
-                className="msg-in break-keep pt-0.5 text-[17px] font-bold leading-relaxed"
-              >
-                {current.text}
-              </p>
-            </div>
+        <div className="mt-5 flex min-h-[52px] items-start gap-3 px-1">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[13px] font-bold text-accent">
+            {step + 1}
+          </span>
+          <p
+            key={step}
+            className="msg-in break-keep pt-0.5 text-[17px] font-bold leading-relaxed"
+          >
+            {current.text}
+          </p>
+        </div>
 
-            <div className="flex justify-center gap-1.5">
-              {STEPS.map((s, i) => (
-                <button
-                  key={s.src}
-                  type="button"
-                  onClick={() => setStep(i)}
-                  aria-label={`${i + 1}번째 단계`}
-                  aria-current={i === step ? "step" : undefined}
-                  className={`h-1.5 rounded-full transition-all ${
-                    i === step ? "w-5 bg-accent" : "w-1.5 bg-line"
-                  }`}
-                />
-              ))}
-            </div>
+        <div className="flex justify-center gap-1.5">
+          {STEPS.map((s, i) => (
+            <button
+              key={s.src}
+              type="button"
+              onClick={() => setStep(i)}
+              aria-label={`${i + 1}번째 단계`}
+              aria-current={i === step ? "step" : undefined}
+              className={`h-1.5 rounded-full transition-all ${
+                i === step ? "w-5 bg-accent" : "w-1.5 bg-line"
+              }`}
+            />
+          ))}
+        </div>
 
-            {/*
+        {/*
               첫 컷에서는 이전이 아예 없다. 눌리지도 않는 버튼을 자리만 차지하게
               두는 것보다 낫다. 폭과 여백을 함께 줄여서 다음 버튼이 자연스럽게
               늘어나고 줄어든다 — gap 대신 오른쪽 여백을 쓰는 이유도 그것이다.
             */}
-            <div className="mt-5 flex">
-              <button
-                type="button"
-                onClick={() => go(-1)}
-                aria-hidden={step === 0}
-                tabIndex={step === 0 ? -1 : 0}
-                className={`h-14 shrink-0 overflow-hidden whitespace-nowrap rounded-2xl bg-surface-2 text-[17px] font-bold text-fg-2 transition-all duration-300 ease-in-out ${
-                  step === 0 ? "pointer-events-none mr-0 w-0 opacity-0" : "mr-3 w-1/3 opacity-100"
-                }`}
-              >
-                이전
-              </button>
-              <button
-                type="button"
-                onClick={() => (step === STEPS.length - 1 ? close() : go(1))}
-                className="h-14 flex-1 rounded-2xl bg-accent text-[17px] font-bold text-accent-fg"
-              >
-                {step === STEPS.length - 1 ? "확인했어요" : "다음"}
-              </button>
-            </div>
-          </div>
-        </>
-      ) : null}
+        <div className="mt-5 flex">
+          <button
+            type="button"
+            onClick={() => go(-1)}
+            aria-hidden={step === 0}
+            tabIndex={step === 0 ? -1 : 0}
+            className={`h-14 shrink-0 overflow-hidden whitespace-nowrap rounded-2xl bg-surface-2 text-[17px] font-bold text-fg-2 transition-all duration-300 ease-in-out ${
+              step === 0
+                ? "pointer-events-none mr-0 w-0 opacity-0"
+                : "mr-3 w-1/3 opacity-100"
+            }`}
+          >
+            이전
+          </button>
+          <button
+            type="button"
+            onClick={() => (step === STEPS.length - 1 ? close() : go(1))}
+            className="h-14 flex-1 rounded-2xl bg-accent text-[17px] font-bold text-accent-fg"
+          >
+            {step === STEPS.length - 1 ? "확인했어요" : "다음"}
+          </button>
+        </div>
+      </Sheet>
     </>
   );
 }

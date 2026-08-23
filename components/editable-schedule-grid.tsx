@@ -14,6 +14,7 @@ import {
   blockEdges,
 } from "./schedule-grid";
 import { formatMin } from "@/lib/time";
+import { Sheet } from "./sheet";
 
 export const SLOT = 30;
 
@@ -51,7 +52,12 @@ const DRAG_SLOP_PX = 8;
 /** 터치에서 이만큼 누르고 있어야 드래그가 시작된다 (그 전엔 화면 스크롤) */
 const HOLD_MS = 160;
 
-export function EditableScheduleGrid({ blocks, onChange, addKind, editableKind }: Props) {
+export function EditableScheduleGrid({
+  blocks,
+  onChange,
+  addKind,
+  editableKind,
+}: Props) {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
 
@@ -63,9 +69,20 @@ export function EditableScheduleGrid({ blocks, onChange, addKind, editableKind }
   const endHour = expanded || !canExpand ? fullEnd : collapsed;
   const slotsPerDay = (endHour - startHour) * 2;
   const spanMin = (endHour - startHour) * 60;
-  const dayBlocksOf = (weekday: number) => blocks.filter((b) => b.weekday === weekday);
+  const dayBlocksOf = (weekday: number) =>
+    blocks.filter((b) => b.weekday === weekday);
 
   const editing = blocks.find((b) => b.key === editingKey) ?? null;
+  /**
+   * 편집 창이 내려가는 동안에도 안에 든 내용은 그대로 있어야 한다. editingKey 를
+   * 비우면 editing 이 곧바로 null 이 되므로, 닫기 직전의 블록을 여기에 남긴다.
+   */
+  const [closingBlock, setClosingBlock] = useState<EditBlock | null>(null);
+  const shownBlock = editing ?? closingBlock;
+  const closeEditor = () => {
+    setClosingBlock(editing);
+    setEditingKey(null);
+  };
 
   const drag = useRef<{
     weekday: number;
@@ -100,7 +117,9 @@ export function EditableScheduleGrid({ blocks, onChange, addKind, editableKind }
   /** 그 칸이 이미 블록에 덮여 있는지 */
   function taken(weekday: number, slot: number) {
     const from = slotMin(slot);
-    return dayBlocksOf(weekday).some((b) => from < b.endMin && from + SLOT > b.startMin);
+    return dayBlocksOf(weekday).some(
+      (b) => from < b.endMin && from + SLOT > b.startMin,
+    );
   }
 
   /** 커서 위치 → 칸 번호 */
@@ -129,7 +148,10 @@ export function EditableScheduleGrid({ blocks, onChange, addKind, editableKind }
     setDraft(null);
   }
 
-  function onPointerDown(e: React.PointerEvent<HTMLDivElement>, weekday: number) {
+  function onPointerDown(
+    e: React.PointerEvent<HTMLDivElement>,
+    weekday: number,
+  ) {
     if (e.pointerType === "mouse" && e.button !== 0) return;
 
     const el = e.currentTarget;
@@ -178,7 +200,8 @@ export function EditableScheduleGrid({ blocks, onChange, addKind, editableKind }
 
     if (!d.armed) {
       // 아직 드래그 전에 움직였다면 스크롤 의도로 보고 물러난다
-      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > DRAG_SLOP_PX) endDrag();
+      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > DRAG_SLOP_PX)
+        endDrag();
       return;
     }
 
@@ -191,7 +214,8 @@ export function EditableScheduleGrid({ blocks, onChange, addKind, editableKind }
     if (!d || d.pointerId !== e.pointerId) return;
 
     const cur = draftRef.current;
-    if (d.armed && cur) addRange(cur.weekday, slotMin(cur.from), slotMin(cur.to) + SLOT);
+    if (d.armed && cur)
+      addRange(cur.weekday, slotMin(cur.from), slotMin(cur.to) + SLOT);
     endDrag();
   }
 
@@ -288,28 +312,31 @@ export function EditableScheduleGrid({ blocks, onChange, addKind, editableKind }
 
             {/* 블록 — 탭하면 편집 */}
             {dayBlocksOf(weekday).map((b) => {
-              const locked = editableKind !== undefined && b.kind !== editableKind;
+              const locked =
+                editableKind !== undefined && b.kind !== editableKind;
               const { rounding, gapTop } = blockEdges(b, dayBlocksOf(weekday));
               return (
-                  <button
-                    key={b.key}
-                    type="button"
-                    disabled={locked}
-                    onClick={() => setEditingKey(b.key)}
-                    style={{
-                      top: `calc(${((b.startMin - startHour * 60) / spanMin) * 100}% + ${gapTop}px)`,
-                      height: `calc(${((b.endMin - b.startMin) / spanMin) * 100}% - ${gapTop}px)`,
-                    }}
-                    aria-label={`${b.kind === "personal" ? "개인일정" : "수업"} ${
-                      DAY_LABELS[weekday]
-                    } ${formatMin(b.startMin)}-${formatMin(b.endMin)} 수정`}
-                    className={`absolute inset-x-0 ${rounding} ${colorFor(b.kind)} ${
-                      locked ? "opacity-40" : ""
-                    } ${
-                      b.confidence === "low" ? "ring-2 ring-inset ring-amber-400" : ""
-                    } ${editingKey === b.key ? "ring-2 ring-inset ring-white/70" : ""}`}
-                  />
-                );
+                <button
+                  key={b.key}
+                  type="button"
+                  disabled={locked}
+                  onClick={() => setEditingKey(b.key)}
+                  style={{
+                    top: `calc(${((b.startMin - startHour * 60) / spanMin) * 100}% + ${gapTop}px)`,
+                    height: `calc(${((b.endMin - b.startMin) / spanMin) * 100}% - ${gapTop}px)`,
+                  }}
+                  aria-label={`${b.kind === "personal" ? "개인일정" : "수업"} ${
+                    DAY_LABELS[weekday]
+                  } ${formatMin(b.startMin)}-${formatMin(b.endMin)} 수정`}
+                  className={`absolute inset-x-0 ${rounding} ${colorFor(b.kind)} ${
+                    locked ? "opacity-40" : ""
+                  } ${
+                    b.confidence === "low"
+                      ? "ring-2 ring-inset ring-amber-400"
+                      : ""
+                  } ${editingKey === b.key ? "ring-2 ring-inset ring-white/70" : ""}`}
+                />
+              );
             })}
           </>
         )}
@@ -323,16 +350,20 @@ export function EditableScheduleGrid({ blocks, onChange, addKind, editableKind }
       />
 
       <p className="mt-2.5 px-1 text-[13px] leading-relaxed text-muted">
-        빈 칸을 누르면 시간표를 추가할 수 있고, 꾹 눌러 위아래로 끌어서 시간표를 추가할 수도
-        있어요.
+        빈 칸을 누르면 시간표를 추가할 수 있고, 꾹 눌러 위아래로 끌어서 시간표를
+        추가할 수도 있어요.
       </p>
 
-      {editing ? (
+      {shownBlock ? (
         <BlockEditor
-          block={editing}
-          onChange={(patch) => update(editing.key, patch)}
-          onDelete={() => remove(editing.key)}
-          onClose={() => setEditingKey(null)}
+          open={editing !== null}
+          block={shownBlock}
+          onChange={(patch) => update(shownBlock.key, patch)}
+          onDelete={() => {
+            remove(shownBlock.key);
+            setClosingBlock(shownBlock);
+          }}
+          onClose={closeEditor}
         />
       ) : null}
     </div>
@@ -377,90 +408,84 @@ function Stepper({
 }
 
 function BlockEditor({
+  open,
   block,
   onChange,
   onDelete,
   onClose,
 }: {
+  open: boolean;
   block: EditBlock;
   onChange: (patch: Partial<EditBlock>) => void;
   onDelete: () => void;
   onClose: () => void;
 }) {
   return (
-    <>
-      <button
-        type="button"
-        aria-label="닫기"
-        onClick={onClose}
-        className="fixed inset-0 z-30 bg-black/40"
-      />
-      <div className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md rounded-t-[28px] bg-surface p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-[0_-8px_32px_rgba(0,0,0,0.12)]">
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-line" />
+    <Sheet open={open} onClose={onClose} padding="compact">
+      <p className="mb-4 flex items-center gap-2 text-sm font-semibold">
+        <span
+          className={`h-3 w-3 rounded ${
+            block.kind === "personal" ? PERSONAL_COLOR : CLASS_COLOR
+          }`}
+        />
+        {block.kind === "personal" ? "안 되는 시간" : "수업"}
+      </p>
 
-        <p className="mb-4 flex items-center gap-2 text-sm font-semibold">
-          <span
-            className={`h-3 w-3 rounded ${
-              block.kind === "personal" ? PERSONAL_COLOR : CLASS_COLOR
-            }`}
-          />
-          {block.kind === "personal" ? "안 되는 시간" : "수업"}
-        </p>
-
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-[15px] font-semibold text-fg-2">요일</span>
-            <div className="flex gap-1">
-              {DAY_LABELS.slice(0, 7).map((d, i) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => onChange({ weekday: i })}
-                  className={`h-10 w-10 rounded-xl text-[15px] font-bold ${
-                    block.weekday === i ? "bg-accent text-accent-fg" : "bg-surface-2 text-muted"
-                  }`}
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <Stepper
-            label="시작"
-            value={block.startMin}
-            onChange={(v) => {
-              const next = Math.max(0, Math.min(v, block.endMin - SLOT));
-              onChange({ startMin: next });
-            }}
-          />
-          <Stepper
-            label="종료"
-            value={block.endMin}
-            onChange={(v) => {
-              const next = Math.min(24 * 60, Math.max(v, block.startMin + SLOT));
-              onChange({ endMin: next });
-            }}
-          />
-
-          <div className="flex gap-3 pt-1">
-            <button
-              type="button"
-              onClick={onDelete}
-              className="h-14 flex-1 rounded-2xl bg-surface-2 text-[17px] font-bold text-danger"
-            >
-              삭제
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="h-14 flex-[2] rounded-2xl bg-accent text-[17px] font-bold text-accent-fg"
-            >
-              완료
-            </button>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <span className="text-[15px] font-semibold text-fg-2">요일</span>
+          <div className="flex gap-1">
+            {DAY_LABELS.slice(0, 7).map((d, i) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => onChange({ weekday: i })}
+                className={`h-10 w-10 rounded-xl text-[15px] font-bold ${
+                  block.weekday === i
+                    ? "bg-accent text-accent-fg"
+                    : "bg-surface-2 text-muted"
+                }`}
+              >
+                {d}
+              </button>
+            ))}
           </div>
         </div>
+
+        <Stepper
+          label="시작"
+          value={block.startMin}
+          onChange={(v) => {
+            const next = Math.max(0, Math.min(v, block.endMin - SLOT));
+            onChange({ startMin: next });
+          }}
+        />
+        <Stepper
+          label="종료"
+          value={block.endMin}
+          onChange={(v) => {
+            const next = Math.min(24 * 60, Math.max(v, block.startMin + SLOT));
+            onChange({ endMin: next });
+          }}
+        />
+
+        <div className="flex gap-3 pt-1">
+          <button
+            type="button"
+            onClick={onDelete}
+            className="h-14 flex-1 rounded-2xl bg-surface-2 text-[17px] font-bold text-danger"
+          >
+            삭제
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-14 flex-[2] rounded-2xl bg-accent text-[17px] font-bold text-accent-fg"
+          >
+            완료
+          </button>
+        </div>
       </div>
-    </>
+    </Sheet>
   );
 }
