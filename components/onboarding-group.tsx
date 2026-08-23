@@ -5,7 +5,7 @@ import { useTransition } from "react";
 import { finishTutorial, undoBlocks } from "@/actions/onboarding";
 import { GroupTabs, type GroupRoster } from "./group-tabs";
 import { OnboardingShell } from "./onboarding-shell";
-import { Button, Card } from "./ui";
+import { Button } from "./ui";
 
 export function OnboardingGroup({ groups, meId }: { groups: GroupRoster[]; meId: string }) {
   const router = useRouter();
@@ -40,9 +40,7 @@ export function OnboardingGroup({ groups, meId }: { groups: GroupRoster[]; meId:
         </Button>
       }
     >
-      <Card>
-        <GroupTabs groups={groups} meId={meId} bare />
-      </Card>
+      <GroupTabs groups={groups} meId={meId} />
     </OnboardingShell>
   );
 }

@@ -237,7 +237,7 @@ export function TimetableUploader({
           }
           className="w-full py-2 text-[15px] font-semibold text-muted disabled:opacity-50"
         >
-          {startingManual ? "여는 중…" : "에타 시간표가 없어요 · 직접 입력할게요"}
+          {startingManual ? "여는 중…" : "직접 입력할게요"}
         </button>
       </div>
     );

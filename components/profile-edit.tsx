@@ -105,7 +105,7 @@ export function ProfileEdit({ displayName, groupRole, groupNos }: Props) {
                       // 이름이 바뀌면 앞서 본 결과는 더 이상 이 이름의 결과가 아니다
                       setNameCheck(null);
                     }}
-                    maxLength={12}
+                    maxLength={9}
                     placeholder="닉네임"
                   />
                   <Button

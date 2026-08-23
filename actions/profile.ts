@@ -14,11 +14,14 @@ import {
 } from "@/lib/store";
 
 // 가입 화면과 같은 규칙 — 표시명이 곧 로그인 아이디다
+const NAME_RULE = /^[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9 ]+$/;
+
 const nameSchema = z
   .string()
   .trim()
   .min(1, "이름을 입력해 주세요.")
-  .max(12, "이름은 12자까지 입력할 수 있어요.");
+  .max(9, "이름은 9자까지 입력할 수 있어요.")
+  .regex(NAME_RULE, "한글·영문·숫자와 띄어쓰기만 쓸 수 있어요.");
 
 const schema = z
   .object({

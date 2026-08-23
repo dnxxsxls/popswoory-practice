@@ -1,13 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { Skeleton } from "./ui";
 
 /**
  * 올린 원본 이미지. 세로가 길어 결과를 아래로 밀어내므로 기본은 접어둔다.
  * 대조가 필요할 때만 펼친다.
+ *
+ * 접혀 있는 동안에도 이미지를 미리 받아둔다 — 펼친 뒤에 받기 시작하면 한참
+ * 빈 화면이 보인다. 아직 도착하지 않았으면 자리만 잡아두고 뼈대를 보여준다.
  */
 export function OriginalImage() {
   const [open, setOpen] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   return (
     <div className="overflow-hidden rounded-2xl bg-surface">
@@ -37,10 +42,17 @@ export function OriginalImage() {
         </span>
       </button>
 
-      {open ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src="/api/timetable/image" alt="올린 시간표 원본" className="block w-full" />
-      ) : null}
+      {/* 펼치기 전에도 내려받아 둔다. 화면에서만 감춘다. */}
+      <div className={open ? "block" : "hidden"}>
+        {open && !loaded ? <Skeleton className="h-64 w-full rounded-none" /> : null}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/api/timetable/image"
+          alt="올린 시간표 원본"
+          onLoad={() => setLoaded(true)}
+          className={`block w-full ${loaded ? "" : "hidden"}`}
+        />
+      </div>
     </div>
   );
 }

@@ -6,11 +6,14 @@ import { hashPin, verifyPin } from "@/lib/pin";
 import { createMember, findMemberByName, touchLogin } from "@/lib/store";
 import { isLocked, recordFail, clearFails } from "@/lib/rate-limit";
 
+const NAME_RULE = /^[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9 ]+$/;
+
 const nameSchema = z
   .string()
   .trim()
   .min(1, "이름을 입력해 주세요.")
-  .max(12, "이름은 12자까지 입력할 수 있어요.");
+  .max(9, "이름은 9자까지 입력할 수 있어요.")
+  .regex(NAME_RULE, "한글·영문·숫자와 띄어쓰기만 쓸 수 있어요.");
 
 const pinSchema = z.string().regex(/^\d{4}$/, "PIN은 숫자 4자리예요.");
 

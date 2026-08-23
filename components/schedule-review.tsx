@@ -8,7 +8,7 @@ import { ScheduleGrid } from "./schedule-grid";
 import { OriginalImage } from "./original-image";
 import { AnalyzingCard } from "./analyzing-card";
 import type { ScheduleBlock } from "@/lib/store";
-import { Button, Card, ErrorText } from "./ui";
+import { Button, ErrorText } from "./ui";
 
 type Step = "confirm" | "personal" | "final";
 
@@ -36,7 +36,7 @@ export function ScheduleReview({
   initial: ScheduleBlock[];
   hasImage: boolean;
   /** 지금 어느 단계인지 밖에 알린다 — 온보딩 진행바와 제목이 이 값을 따라간다 */
-  onPhaseChange?: (phase: "analyze" | Step) => void;
+  onPhaseChange?: (phase: "analyze" | "failed" | Step, detail?: string) => void;
   /** 첫 단계에서 더 뒤로 갈 곳이 있으면 넘긴다 — 이전 버튼이 생긴다 */
   onBackFromFirst?: () => void;
   /** 온보딩은 셸이 단계를 표시하므로 자체 라벨을 끈다 */
@@ -54,10 +54,13 @@ export function ScheduleReview({
   const [error, setError] = useState("");
   const [saving, startSave] = useTransition();
 
-  // 분석 중에는 화면 전체가 대기 카드라 step 이 의미 없다 — 그때는 analyze 로 알린다.
+  /**
+   * 분석 중에는 화면 전체가 대기 카드라 step 이 의미 없고, 인식에 실패하면
+   * 제목부터 달라져야 해서 별도로 알린다. 화면 안에서 오류 카드를 또 띄우지 않는다.
+   */
   useEffect(() => {
-    onPhaseChange?.(analyzing ? "analyze" : step);
-  }, [analyzing, step, onPhaseChange]);
+    onPhaseChange?.(analyzing ? "analyze" : error ? "failed" : step, error || undefined);
+  }, [analyzing, error, step, onPhaseChange]);
   const [saved, setSaved] = useState(false);
 
   // 저장된 블록이 없고 이미지가 있으면 들어오자마자 분석
@@ -183,30 +186,6 @@ export function ScheduleReview({
         <p className="px-1 text-[13px] font-bold text-accent">{STEP_LABEL[step]}</p>
       ) : null}
 
-      {error ? (
-        <Card className="ring-2 ring-danger">
-          <p className="text-[17px] font-bold">자동 인식에 실패했어요</p>
-          <p className="mt-2 text-[15px] leading-relaxed text-muted">{error}</p>
-          <div className="mt-4 flex gap-2">
-            {hasImage ? (
-              <Button
-                variant="secondary"
-                className="flex-1"
-                onClick={() => {
-                  setError("");
-                  setAnalyzing(true);
-                }}
-              >
-                다시 시도
-              </Button>
-            ) : null}
-            <Button className="flex-1" onClick={() => setError("")}>
-              직접 입력할게요
-            </Button>
-          </div>
-        </Card>
-      ) : null}
-
       {step === "confirm" ? (
         <>
           {/* 원본을 위에 둬야 눈이 위아래로 오가며 비교하기 쉽다 */}
@@ -227,7 +206,11 @@ export function ScheduleReview({
             ) : null}
             <Button
               className={onBackFromFirst ? "flex-[2]" : "w-full"}
-              onClick={() => setStep("personal")}
+              onClick={() => {
+                // 직접 채워 넣고 넘어가면 인식 실패는 더 이상 알릴 것이 아니다
+                setError("");
+                setStep("personal");
+              }}
             >
               {classCount > 0 ? "수업 시간이 맞아요" : "수업 없이 진행"}
             </Button>

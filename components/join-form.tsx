@@ -187,7 +187,7 @@ export function JoinForm() {
                   setNameCheck(null);
                 }}
                 placeholder="통통튀는 베이스"
-                maxLength={12}
+                maxLength={9}
                 className={inputClass}
               />
             </UnderlineField>
