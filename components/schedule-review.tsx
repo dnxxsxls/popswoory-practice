@@ -59,8 +59,11 @@ export function ScheduleReview({
    * 제목부터 달라져야 해서 별도로 알린다. 화면 안에서 오류 카드를 또 띄우지 않는다.
    */
   useEffect(() => {
-    onPhaseChange?.(analyzing ? "analyze" : error ? "failed" : step, error || undefined);
-  }, [analyzing, error, step, onPhaseChange]);
+    onPhaseChange?.(
+      analyzing ? "analyze" : error && hasImage ? "failed" : step,
+      error || undefined,
+    );
+  }, [analyzing, error, hasImage, step, onPhaseChange]);
   const [saved, setSaved] = useState(false);
 
   // 저장된 블록이 없고 이미지가 있으면 들어오자마자 분석
@@ -177,6 +180,9 @@ export function ScheduleReview({
     return <AnalyzingCard />;
   }
 
+  // 원본이 있어야 실패 화면에서 보여줄 것이 있다. 없으면 그냥 격자로 간다.
+  const failed = Boolean(error) && hasImage;
+
   const classCount = blocks.filter((b) => b.kind === "class").length;
   const personalCount = blocks.filter((b) => b.kind === "personal").length;
 
@@ -186,7 +192,31 @@ export function ScheduleReview({
         <p className="px-1 text-[13px] font-bold text-accent">{STEP_LABEL[step]}</p>
       ) : null}
 
-      {step === "confirm" ? (
+      {/*
+        인식에 실패했으면 빈 격자를 들이밀 이유가 없다. 올린 원본을 바로 펼쳐
+        보여주고, 직접 입력을 고르면 그때 격자로 넘어간다.
+      */}
+      {failed ? (
+        <>
+          <OriginalImage defaultOpen />
+
+          <div className="flex gap-3">
+            {onBackFromFirst ? (
+              <Button variant="secondary" className="flex-1" onClick={onBackFromFirst}>
+                이전
+              </Button>
+            ) : null}
+            <Button
+              className={onBackFromFirst ? "flex-[2]" : "w-full"}
+              onClick={() => setError("")}
+            >
+              직접 입력할게요
+            </Button>
+          </div>
+        </>
+      ) : null}
+
+      {!failed && step === "confirm" ? (
         <>
           {/* 원본을 위에 둬야 눈이 위아래로 오가며 비교하기 쉽다 */}
           {hasImage ? <OriginalImage /> : null}

@@ -10,8 +10,8 @@ import { Skeleton } from "./ui";
  * 접혀 있는 동안에도 이미지를 미리 받아둔다 — 펼친 뒤에 받기 시작하면 한참
  * 빈 화면이 보인다. 아직 도착하지 않았으면 자리만 잡아두고 뼈대를 보여준다.
  */
-export function OriginalImage() {
-  const [open, setOpen] = useState(false);
+export function OriginalImage({ defaultOpen = false }: { defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
   const [loaded, setLoaded] = useState(false);
 
   return (
