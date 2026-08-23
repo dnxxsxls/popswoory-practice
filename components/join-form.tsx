@@ -6,10 +6,7 @@ import { checkName, signIn, signUp } from "@/actions/auth";
 import { randomNickname } from "@/lib/nickname";
 import { ErrorText, EyeIcon } from "./ui";
 
-type Step =
-  | { kind: "name" }
-  | { kind: "login"; name: string }
-  | { kind: "create"; name: string };
+type Step = { kind: "name" } | { kind: "login"; name: string } | { kind: "create"; name: string };
 
 /** 큰 제목 + 회색 부제목 */
 function Heading({ title, subtitle }: { title: string; subtitle: string }) {
@@ -47,6 +44,29 @@ function UnderlineField({
   );
 }
 
+/** 닉네임이 규칙에 맞는지(체크) 아닌지(엑스) 한 글자로 알려주는 아이콘. */
+function StatusIcon({ ok }: { ok: boolean }) {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {ok ? <path d="M5 12.5l4.5 4.5L19 7.5" /> : <path d="M6 6l12 12M18 6L6 18" />}
+    </svg>
+  );
+}
+
+/** actions/auth.ts 의 nameSchema 와 같은 규칙 — 화면에서 미리 알려주기 위한 것이다. */
+const NAME_MAX = 9;
+const NAME_RULE = /^[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9 ]*$/;
+
 const inputClass =
   "min-w-0 flex-1 bg-transparent text-[24px] font-bold text-fg outline-none placeholder:font-normal placeholder:text-muted";
 
@@ -59,7 +79,8 @@ export function JoinForm() {
   const [pin2, setPin2] = useState("");
   const [error, setError] = useState("");
   const [showPin, setShowPin] = useState(false);
-  const [nameCheck, setNameCheck] = useState<null | { ok: boolean; text: string }>(null);
+  /** 서버에 물어본 중복 결과. 어느 이름에 대한 답인지 같이 들고 있어야 늦게 온 답을 버릴 수 있다. */
+  const [checked, setChecked] = useState<{ name: string; exists: boolean } | null>(null);
   const pinRef = useRef<HTMLInputElement>(null);
   const pin2Ref = useRef<HTMLInputElement>(null);
 
@@ -79,21 +100,41 @@ export function JoinForm() {
     }
   }, [showPin]);
 
-  function checkDuplicate() {
-    setError("");
-    start(async () => {
-      const res = await checkName(name);
-      if (!res.ok) {
-        setNameCheck({ ok: false, text: res.error });
-        return;
-      }
-      setNameCheck(
-        res.exists
-          ? { ok: false, text: "이미 등록된 이름이에요." }
-          : { ok: true, text: "쓸 수 있는 닉네임이에요." },
-      );
-    });
-  }
+  // 규칙은 렌더 중에 바로 판정한다 — 상태로 둘 이유가 없다.
+  const trimmed = name.trim();
+  const ruleError =
+    trimmed.length === 0
+      ? null
+      : !NAME_RULE.test(trimmed)
+        ? "한글·영문·숫자와 띄어쓰기만 쓸 수 있어요."
+        : trimmed.length > NAME_MAX
+          ? `${NAME_MAX}자까지 쓸 수 있어요.`
+          : null;
+
+  // 중복만 서버에 묻는다. 글자를 치는 동안마다 부르지 않고 잠깐 멈추면 확인한다.
+  useEffect(() => {
+    if (trimmed.length === 0 || ruleError) return;
+    const timer = setTimeout(async () => {
+      const res = await checkName(trimmed);
+      setChecked({ name: trimmed, exists: res.ok ? res.exists : false });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [trimmed, ruleError]);
+
+  /** 지금 이름에 대한 답이 와 있는지. 없으면 아직 확인 중이다. */
+  const takenKnown = checked && checked.name === trimmed ? checked.exists : null;
+
+  const nameState:
+    { kind: "empty" | "checking" | "taken" | "ok" } | { kind: "invalid"; message: string } =
+    trimmed.length === 0
+      ? { kind: "empty" }
+      : ruleError
+        ? { kind: "invalid", message: ruleError }
+        : takenKnown === null
+          ? { kind: "checking" }
+          : takenKnown
+            ? { kind: "taken" }
+            : { kind: "ok" };
 
   function submitName(e: React.FormEvent) {
     e.preventDefault();
@@ -156,51 +197,62 @@ export function JoinForm() {
             <UnderlineField
               label="닉네임"
               action={
-                <span className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={checkDuplicate}
-                    disabled={pending || name.trim().length === 0}
-                    className="text-[13px] font-semibold text-accent disabled:opacity-40"
-                  >
-                    중복 확인
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setName((prev) => randomNickname(prev));
-                      setNameCheck(null);
-                    }}
-                    className="text-[13px] font-semibold text-accent"
-                  >
-                    랜덤 추천
-                  </button>
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setName((prev) => randomNickname(prev))}
+                  className="text-[13px] font-semibold text-accent"
+                >
+                  랜덤 추천
+                </button>
+              }
+              suffix={
+                nameState.kind === "ok" ? (
+                  <span className="text-accent">
+                    <StatusIcon ok />
+                  </span>
+                ) : nameState.kind === "invalid" || nameState.kind === "taken" ? (
+                  <span className={nameState.kind === "invalid" ? "text-danger" : "text-muted"}>
+                    <StatusIcon ok={false} />
+                  </span>
+                ) : null
               }
             >
               <input
                 autoFocus
                 value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  // 이름이 바뀌면 앞서 본 결과는 더 이상 이 이름의 결과가 아니다
-                  setNameCheck(null);
-                }}
+                onChange={(e) => setName(e.target.value)}
                 placeholder="통통튀는 베이스"
                 maxLength={9}
                 className={inputClass}
               />
             </UnderlineField>
 
-            {nameCheck ? (
+            <div className="mt-3 flex items-start justify-between gap-3">
               <p
-                className={`mt-3 text-[13px] font-bold ${
-                  nameCheck.ok ? "text-accent" : "text-danger"
+                className={`text-[13px] leading-relaxed ${
+                  nameState.kind === "invalid"
+                    ? "font-bold text-danger"
+                    : nameState.kind === "taken"
+                      ? "font-bold text-fg-2"
+                      : "text-muted"
                 }`}
               >
-                {nameCheck.text}
+                {nameState.kind === "invalid"
+                  ? nameState.message
+                  : nameState.kind === "taken"
+                    ? "이미 있는 이름이에요. 다음을 누르면 로그인해요."
+                    : nameState.kind === "ok"
+                      ? "쓸 수 있는 닉네임이에요."
+                      : `한글·영문·숫자와 띄어쓰기, ${NAME_MAX}자까지 쓸 수 있어요.`}
               </p>
-            ) : null}
+              <span
+                className={`shrink-0 text-[13px] font-bold tabular-nums ${
+                  name.length >= NAME_MAX ? "text-accent" : "text-muted"
+                }`}
+              >
+                {name.length} / {NAME_MAX}
+              </span>
+            </div>
           </div>
         </>
       ) : (
