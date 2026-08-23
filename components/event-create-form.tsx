@@ -6,11 +6,18 @@ import { createMeetEvent } from "@/actions/events";
 import { Button, ErrorText, Field, Input } from "./ui";
 
 const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
-const DURATIONS = [
-  { label: "1시간", value: 60 },
-  { label: "2시간", value: 120 },
-  { label: "3시간", value: 180 },
-];
+/** 소요시간 조절 폭과 범위. 기본은 1시간에서 시작한다. */
+const DURATION_STEP = 30;
+const DURATION_MIN = 30;
+const DURATION_MAX = 360;
+
+function formatDuration(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h === 0) return `${m}분`;
+  if (m === 0) return `${h}시간`;
+  return `${h}시간 ${m}분`;
+}
 
 /** 가을발표회 — 달력에서 강조 표시한다 */
 const SHOWCASE = { date: "2026-10-03", label: "가을발표회" };
@@ -67,11 +74,20 @@ export function EventCreateForm() {
   const [title, setTitle] = useState("");
   // 연습 하나는 하루짜리다. 고르지 않았으면 빈 문자열.
   const [date, setDate] = useState("");
-  const [durationMin, setDuration] = useState(120);
+  const [durationMin, setDuration] = useState(60);
   const [error, setError] = useState("");
   const [monthOffset, setMonthOffset] = useState(0);
+  /** 달력이 어느 쪽에서 밀려 들어올지. 누른 화살표를 따라간다. */
+  const [slide, setSlide] = useState<"next" | "prev">("next");
 
   const { label, cells } = monthCalendar(monthOffset);
+
+  function goMonth(delta: 1 | -1) {
+    const next = Math.min(6, Math.max(0, monthOffset + delta));
+    if (next === monthOffset) return;
+    setSlide(delta > 0 ? "next" : "prev");
+    setMonthOffset(next);
+  }
 
   /** 같은 날을 다시 누르면 선택이 풀리고, 다른 날을 누르면 그 날로 옮겨간다. */
   function pick(value: string) {
@@ -111,7 +127,7 @@ export function EventCreateForm() {
           <div className="mb-1 flex items-center justify-between px-1">
             <button
               type="button"
-              onClick={() => setMonthOffset((v) => Math.max(0, v - 1))}
+              onClick={() => goMonth(-1)}
               disabled={monthOffset === 0}
               aria-label="이전 달"
               className="flex h-9 w-9 items-center justify-center rounded-lg text-fg-2 disabled:opacity-25"
@@ -125,7 +141,7 @@ export function EventCreateForm() {
 
             <button
               type="button"
-              onClick={() => setMonthOffset((v) => Math.min(6, v + 1))}
+              onClick={() => goMonth(1)}
               aria-label="다음 달"
               className="flex h-9 w-9 items-center justify-center rounded-lg text-fg-2"
             >
@@ -135,57 +151,62 @@ export function EventCreateForm() {
             </button>
           </div>
 
-          <div className="grid grid-cols-7">
-            {DAY_LABELS.map((d, i) => (
-              <span
-                key={d}
-                className={`py-1.5 text-center text-[12px] font-bold ${
-                  i === 0 ? "text-danger" : i === 6 ? "text-accent" : "text-muted"
-                }`}
-              >
-                {d}
-              </span>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-7 gap-y-1">
-            {cells.map((cell, i) => {
-              if (!cell) return <span key={`empty-${i}`} />;
-              const on = date === cell.value;
-              return (
-                <button
-                  key={cell.value}
-                  type="button"
-                  disabled={cell.isPast}
-                  onClick={() => pick(cell.value)}
-                  aria-pressed={on}
-                  aria-label={`${label} ${cell.date}일${cell.isShowcase ? ` · ${SHOWCASE.label}` : ""}`}
-                  className="flex flex-col items-center py-1 disabled:cursor-default"
-                >
+          {/* 월 이름·화살표는 제자리에 두고, 이 안쪽만 옆에서 밀려 들어온다 */}
+          <div className="overflow-hidden">
+            <div key={monthOffset} className={slide === "next" ? "cal-next" : "cal-prev"}>
+              <div className="grid grid-cols-7">
+                {DAY_LABELS.map((d, i) => (
                   <span
-                    className={`flex h-10 w-10 items-center justify-center rounded-full text-[15px] font-bold ${
-                      on
-                        ? "bg-accent text-accent-fg"
-                        : cell.isShowcase
-                          ? "bg-accent-soft text-accent ring-2 ring-accent"
-                          : cell.isPast
-                            ? "text-muted/40"
-                            : cell.day === 0
-                              ? "text-danger"
-                              : cell.day === 6
-                                ? "text-accent"
-                                : "text-fg"
+                    key={d}
+                    className={`py-1.5 text-center text-[12px] font-bold ${
+                      i === 0 ? "text-danger" : i === 6 ? "text-accent" : "text-muted"
                     }`}
                   >
-                    {cell.date}
+                    {d}
                   </span>
-                  {/* 높이를 맞추기 위해 자리는 늘 잡되, 글자는 필요한 날만 넣는다 */}
-                  <span className="mt-0.5 h-3 whitespace-nowrap text-[10px] font-bold text-accent">
-                    {cell.isShowcase ? "발표회" : cell.isToday ? "오늘" : ""}
-                  </span>
-                </button>
-              );
-            })}
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-y-1">
+                {cells.map((cell, i) => {
+                  if (!cell) return <span key={`empty-${i}`} />;
+                  const on = date === cell.value;
+                  return (
+                    <button
+                      key={cell.value}
+                      type="button"
+                      disabled={cell.isPast}
+                      onClick={() => pick(cell.value)}
+                      aria-pressed={on}
+                      aria-label={`${label} ${cell.date}일${cell.isShowcase ? ` · ${SHOWCASE.label}` : ""}`}
+                      className="flex flex-col items-center py-1 disabled:cursor-default"
+                    >
+                      <span
+                        className={`flex h-10 w-10 items-center justify-center rounded-full text-[15px] font-bold ${
+                          on
+                            ? "bg-accent text-accent-fg"
+                            : cell.isShowcase
+                              ? "bg-accent-soft text-accent ring-2 ring-accent"
+                              : cell.isPast
+                                ? "text-muted/40"
+                                : cell.day === 0
+                                  ? "text-danger"
+                                  : cell.day === 6
+                                    ? "text-accent"
+                                    : "text-fg"
+                        }`}
+                      >
+                        {cell.date}
+                      </span>
+                      {/* 높이를 맞추기 위해 자리는 늘 잡되, 글자는 필요한 날만 넣는다 */}
+                      <span className="mt-0.5 h-3 whitespace-nowrap text-[10px] font-bold text-accent">
+                        {cell.isShowcase ? "발표회" : cell.isToday ? "오늘" : ""}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -196,19 +217,28 @@ export function EventCreateForm() {
 
       <div>
         <p className="mb-2 text-sm font-semibold text-fg-2">얼마나 만날까요</p>
-        <div className="flex gap-2">
-          {DURATIONS.map((d) => (
-            <button
-              key={d.value}
-              type="button"
-              onClick={() => setDuration(d.value)}
-              className={`h-12 flex-1 rounded-xl text-[15px] font-bold ${
-                durationMin === d.value ? "bg-accent text-accent-fg" : "bg-surface text-fg-2"
-              }`}
-            >
-              {d.label}
-            </button>
-          ))}
+        <div className="flex items-center justify-between rounded-2xl bg-surface p-3">
+          <button
+            type="button"
+            onClick={() => setDuration((v) => Math.max(DURATION_MIN, v - DURATION_STEP))}
+            disabled={durationMin <= DURATION_MIN}
+            aria-label="30분 줄이기"
+            className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-2 text-2xl font-bold text-fg-2 disabled:opacity-30"
+          >
+            −
+          </button>
+          <span aria-live="polite" className="text-[20px] font-extrabold tabular-nums">
+            {formatDuration(durationMin)}
+          </span>
+          <button
+            type="button"
+            onClick={() => setDuration((v) => Math.min(DURATION_MAX, v + DURATION_STEP))}
+            disabled={durationMin >= DURATION_MAX}
+            aria-label="30분 늘리기"
+            className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-2 text-2xl font-bold text-fg-2 disabled:opacity-30"
+          >
+            +
+          </button>
         </div>
       </div>
 

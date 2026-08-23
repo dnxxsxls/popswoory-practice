@@ -65,11 +65,15 @@ export function Field({
   );
 }
 
+/**
+ * 밝은 테마에서 --surface-2 와 --bg 가 같은 색이라, 페이지 위에 그냥 놓으면 입력칸이
+ * 있는지조차 보이지 않았다. 테두리를 둘러 상자를 만들고 눌렀을 때는 강조색으로 굵어진다.
+ */
 export function Input({ className = "", ...props }: ComponentProps<"input">) {
   return (
     <input
       {...props}
-      className={`h-14 w-full rounded-2xl bg-surface-2 px-4 text-[17px] font-medium text-fg outline-none placeholder:font-normal placeholder:text-muted focus:bg-accent-soft ${className}`}
+      className={`h-14 w-full rounded-2xl bg-surface px-4 text-[17px] font-medium text-fg outline-none ring-1 ring-inset ring-line placeholder:font-normal placeholder:text-muted focus:ring-2 focus:ring-accent ${className}`}
     />
   );
 }

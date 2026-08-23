@@ -329,3 +329,44 @@ input[type="number"]::-webkit-inner-spin-button {
     transition: none;
   }
 }
+
+/*
+ * 달을 넘길 때 달력 안쪽(요일 줄 + 날짜)만 옆으로 미끄러진다.
+ * 월 이름과 화살표는 제자리에 있어야 어디를 눌렀는지 눈이 놓치지 않는다.
+ */
+@keyframes cal-next {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes cal-prev {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.cal-next {
+  animation: cal-next 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.cal-prev {
+  animation: cal-prev 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cal-next,
+  .cal-prev {
+    animation: none;
+  }
+}
