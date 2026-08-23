@@ -22,12 +22,7 @@ const STEP_LABEL: Record<Step, string> = {
 let seq = 0;
 const nextKey = () => `blk-${seq++}`;
 
-function toEdit(
-  blocks: Pick<
-    ScheduleBlock,
-    "weekday" | "startMin" | "endMin" | "title" | "confidence" | "kind"
-  >[],
-): EditBlock[] {
+function toEdit(blocks: Pick<ScheduleBlock, "weekday" | "startMin" | "endMin" | "title" | "confidence" | "kind">[]): EditBlock[] {
   return blocks.map((b) => ({ ...b, key: nextKey() }));
 }
 
@@ -98,16 +93,14 @@ export function ScheduleReview({
     setError("");
     startSave(async () => {
       const res = await saveMyTimetableBlocks(
-        blocks.map(
-          ({ weekday, startMin, endMin, title, confidence, kind }) => ({
-            weekday,
-            startMin,
-            endMin,
-            title,
-            confidence,
-            kind,
-          }),
-        ),
+        blocks.map(({ weekday, startMin, endMin, title, confidence, kind }) => ({
+          weekday,
+          startMin,
+          endMin,
+          title,
+          confidence,
+          kind,
+        })),
       );
       if (!res.ok) {
         setError(res.message);
@@ -148,9 +141,7 @@ export function ScheduleReview({
           </span>
         </div>
 
-        <h2 className="mt-5 text-center text-[22px] font-extrabold">
-          시간표 등록 완료!
-        </h2>
+        <h2 className="mt-5 text-center text-[22px] font-extrabold">시간표 등록 완료!</h2>
         <p className="mt-2 text-center text-[15px] leading-relaxed text-muted">
           이제 팀원들과 겹치는 공강 시간을
           <br />
@@ -195,9 +186,7 @@ export function ScheduleReview({
   return (
     <div className="space-y-4">
       {showStepLabel ? (
-        <p className="px-1 text-[13px] font-bold text-accent">
-          {STEP_LABEL[step]}
-        </p>
+        <p className="px-1 text-[13px] font-bold text-accent">{STEP_LABEL[step]}</p>
       ) : null}
 
       {/*
@@ -210,11 +199,7 @@ export function ScheduleReview({
 
           <div className="flex gap-3">
             {onBackFromFirst ? (
-              <Button
-                variant="secondary"
-                className="flex-1"
-                onClick={onBackFromFirst}
-              >
+              <Button variant="secondary" className="flex-1" onClick={onBackFromFirst}>
                 이전
               </Button>
             ) : null}
@@ -242,11 +227,7 @@ export function ScheduleReview({
 
           <div className="flex gap-3">
             {onBackFromFirst ? (
-              <Button
-                variant="secondary"
-                className="flex-1"
-                onClick={onBackFromFirst}
-              >
+              <Button variant="secondary" className="flex-1" onClick={onBackFromFirst}>
                 이전
               </Button>
             ) : null}
@@ -274,17 +255,11 @@ export function ScheduleReview({
           />
 
           <div className="flex gap-3">
-            <Button
-              variant="secondary"
-              className="flex-1"
-              onClick={() => setStep("confirm")}
-            >
+            <Button variant="secondary" className="flex-1" onClick={() => setStep("confirm")}>
               이전
             </Button>
             <Button className="flex-[2]" onClick={() => setStep("final")}>
-              {personalCount > 0
-                ? `${personalCount}개 넣고 다음`
-                : "없어요, 다음"}
+              {personalCount > 0 ? `${personalCount}개 넣고 다음` : "없어요, 다음"}
             </Button>
           </div>
         </>
@@ -305,18 +280,10 @@ export function ScheduleReview({
             </span>
           </div>
 
-          <ErrorText>
-            {blocks.length === 0
-              ? "시간이 하나도 없어요. 그래도 확정할 수 있어요."
-              : ""}
-          </ErrorText>
+          <ErrorText>{blocks.length === 0 ? "시간이 하나도 없어요. 그래도 확정할 수 있어요." : ""}</ErrorText>
 
           <div className="flex gap-3">
-            <Button
-              variant="secondary"
-              className="flex-1"
-              onClick={() => setStep("personal")}
-            >
+            <Button variant="secondary" className="flex-1" onClick={() => setStep("personal")}>
               이전
             </Button>
             <Button className="flex-[2]" disabled={saving} onClick={save}>

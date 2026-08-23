@@ -5,11 +5,7 @@ import { useRef, useState } from "react";
 import { Sheet } from "./sheet";
 
 /** zoom: 작게 보이는 컷은 확대한다. origin 은 강조 부분이 잘리지 않도록 잡는다. */
-const STEPS: {
-  text: string;
-  src: string;
-  zoom?: { scale: number; origin: string };
-}[] = [
+const STEPS: { text: string; src: string; zoom?: { scale: number; origin: string } }[] = [
   { text: "에브리타임 앱을 열어주세요", src: "/guide/step-1.png" },
   { text: "하단 탭에서 [시간표]를 눌러주세요", src: "/guide/step-2.png" },
   {
@@ -108,9 +104,7 @@ export function EverytimeGuide() {
 
       <Sheet open={open} onClose={close} padding="flush">
         <div className="flex items-center justify-between px-1">
-          <h2 className="text-[19px] font-extrabold">
-            에타에서 시간표 가져오기
-          </h2>
+          <h2 className="text-[19px] font-extrabold">에타에서 시간표 가져오기</h2>
           <button
             type="button"
             onClick={close}
@@ -148,10 +142,10 @@ export function EverytimeGuide() {
           }}
         >
           {/*
-                등장 애니메이션은 감싸는 요소에 건다. 같은 요소에 걸면 애니메이션의
-                transform 이 확대(scale)를 덮어써서, 도는 동안 작게 보이다가
-                끝나는 순간 튀어 커진다.
-              */}
+            등장 애니메이션은 감싸는 요소에 건다. 같은 요소에 걸면 애니메이션의
+            transform 이 확대(scale)를 덮어써서, 도는 동안 작게 보이다가
+            끝나는 순간 튀어 커진다.
+          */}
           <span key={step} className="msg-in block overflow-hidden">
             <Image
               src={current.src}
@@ -172,11 +166,7 @@ export function EverytimeGuide() {
           </span>
 
           <Arrow dir="prev" onClick={() => go(-1)} disabled={step === 0} />
-          <Arrow
-            dir="next"
-            onClick={() => go(1)}
-            disabled={step === STEPS.length - 1}
-          />
+          <Arrow dir="next" onClick={() => go(1)} disabled={step === STEPS.length - 1} />
         </div>
 
         <div className="mt-5 flex min-h-[52px] items-start gap-3 px-1">
@@ -207,10 +197,10 @@ export function EverytimeGuide() {
         </div>
 
         {/*
-              첫 컷에서는 이전이 아예 없다. 눌리지도 않는 버튼을 자리만 차지하게
-              두는 것보다 낫다. 폭과 여백을 함께 줄여서 다음 버튼이 자연스럽게
-              늘어나고 줄어든다 — gap 대신 오른쪽 여백을 쓰는 이유도 그것이다.
-            */}
+          첫 컷에서는 이전이 아예 없다. 눌리지도 않는 버튼을 자리만 차지하게
+          두는 것보다 낫다. 폭과 여백을 함께 줄여서 다음 버튼이 자연스럽게
+          늘어나고 줄어든다 — gap 대신 오른쪽 여백을 쓰는 이유도 그것이다.
+        */}
         <div className="mt-5 flex">
           <button
             type="button"
@@ -218,9 +208,7 @@ export function EverytimeGuide() {
             aria-hidden={step === 0}
             tabIndex={step === 0 ? -1 : 0}
             className={`h-14 shrink-0 overflow-hidden whitespace-nowrap rounded-2xl bg-surface-2 text-[17px] font-bold text-fg-2 transition-all duration-300 ease-in-out ${
-              step === 0
-                ? "pointer-events-none mr-0 w-0 opacity-0"
-                : "mr-3 w-1/3 opacity-100"
+              step === 0 ? "pointer-events-none mr-0 w-0 opacity-0" : "mr-3 w-1/3 opacity-100"
             }`}
           >
             이전

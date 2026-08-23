@@ -52,12 +52,7 @@ const DRAG_SLOP_PX = 8;
 /** 터치에서 이만큼 누르고 있어야 드래그가 시작된다 (그 전엔 화면 스크롤) */
 const HOLD_MS = 160;
 
-export function EditableScheduleGrid({
-  blocks,
-  onChange,
-  addKind,
-  editableKind,
-}: Props) {
+export function EditableScheduleGrid({ blocks, onChange, addKind, editableKind }: Props) {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
 
@@ -69,8 +64,7 @@ export function EditableScheduleGrid({
   const endHour = expanded || !canExpand ? fullEnd : collapsed;
   const slotsPerDay = (endHour - startHour) * 2;
   const spanMin = (endHour - startHour) * 60;
-  const dayBlocksOf = (weekday: number) =>
-    blocks.filter((b) => b.weekday === weekday);
+  const dayBlocksOf = (weekday: number) => blocks.filter((b) => b.weekday === weekday);
 
   const editing = blocks.find((b) => b.key === editingKey) ?? null;
   /**
@@ -117,9 +111,7 @@ export function EditableScheduleGrid({
   /** 그 칸이 이미 블록에 덮여 있는지 */
   function taken(weekday: number, slot: number) {
     const from = slotMin(slot);
-    return dayBlocksOf(weekday).some(
-      (b) => from < b.endMin && from + SLOT > b.startMin,
-    );
+    return dayBlocksOf(weekday).some((b) => from < b.endMin && from + SLOT > b.startMin);
   }
 
   /** 커서 위치 → 칸 번호 */
@@ -148,10 +140,7 @@ export function EditableScheduleGrid({
     setDraft(null);
   }
 
-  function onPointerDown(
-    e: React.PointerEvent<HTMLDivElement>,
-    weekday: number,
-  ) {
+  function onPointerDown(e: React.PointerEvent<HTMLDivElement>, weekday: number) {
     if (e.pointerType === "mouse" && e.button !== 0) return;
 
     const el = e.currentTarget;
@@ -200,8 +189,7 @@ export function EditableScheduleGrid({
 
     if (!d.armed) {
       // 아직 드래그 전에 움직였다면 스크롤 의도로 보고 물러난다
-      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > DRAG_SLOP_PX)
-        endDrag();
+      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > DRAG_SLOP_PX) endDrag();
       return;
     }
 
@@ -214,8 +202,7 @@ export function EditableScheduleGrid({
     if (!d || d.pointerId !== e.pointerId) return;
 
     const cur = draftRef.current;
-    if (d.armed && cur)
-      addRange(cur.weekday, slotMin(cur.from), slotMin(cur.to) + SLOT);
+    if (d.armed && cur) addRange(cur.weekday, slotMin(cur.from), slotMin(cur.to) + SLOT);
     endDrag();
   }
 
@@ -312,31 +299,28 @@ export function EditableScheduleGrid({
 
             {/* 블록 — 탭하면 편집 */}
             {dayBlocksOf(weekday).map((b) => {
-              const locked =
-                editableKind !== undefined && b.kind !== editableKind;
+              const locked = editableKind !== undefined && b.kind !== editableKind;
               const { rounding, gapTop } = blockEdges(b, dayBlocksOf(weekday));
               return (
-                <button
-                  key={b.key}
-                  type="button"
-                  disabled={locked}
-                  onClick={() => setEditingKey(b.key)}
-                  style={{
-                    top: `calc(${((b.startMin - startHour * 60) / spanMin) * 100}% + ${gapTop}px)`,
-                    height: `calc(${((b.endMin - b.startMin) / spanMin) * 100}% - ${gapTop}px)`,
-                  }}
-                  aria-label={`${b.kind === "personal" ? "개인일정" : "수업"} ${
-                    DAY_LABELS[weekday]
-                  } ${formatMin(b.startMin)}-${formatMin(b.endMin)} 수정`}
-                  className={`absolute inset-x-0 ${rounding} ${colorFor(b.kind)} ${
-                    locked ? "opacity-40" : ""
-                  } ${
-                    b.confidence === "low"
-                      ? "ring-2 ring-inset ring-amber-400"
-                      : ""
-                  } ${editingKey === b.key ? "ring-2 ring-inset ring-white/70" : ""}`}
-                />
-              );
+                  <button
+                    key={b.key}
+                    type="button"
+                    disabled={locked}
+                    onClick={() => setEditingKey(b.key)}
+                    style={{
+                      top: `calc(${((b.startMin - startHour * 60) / spanMin) * 100}% + ${gapTop}px)`,
+                      height: `calc(${((b.endMin - b.startMin) / spanMin) * 100}% - ${gapTop}px)`,
+                    }}
+                    aria-label={`${b.kind === "personal" ? "개인일정" : "수업"} ${
+                      DAY_LABELS[weekday]
+                    } ${formatMin(b.startMin)}-${formatMin(b.endMin)} 수정`}
+                    className={`absolute inset-x-0 ${rounding} ${colorFor(b.kind)} ${
+                      locked ? "opacity-40" : ""
+                    } ${
+                      b.confidence === "low" ? "ring-2 ring-inset ring-amber-400" : ""
+                    } ${editingKey === b.key ? "ring-2 ring-inset ring-white/70" : ""}`}
+                  />
+                );
             })}
           </>
         )}
@@ -350,8 +334,8 @@ export function EditableScheduleGrid({
       />
 
       <p className="mt-2.5 px-1 text-[13px] leading-relaxed text-muted">
-        빈 칸을 누르면 시간표를 추가할 수 있고, 꾹 눌러 위아래로 끌어서 시간표를
-        추가할 수도 있어요.
+        빈 칸을 누르면 시간표를 추가할 수 있고, 꾹 눌러 위아래로 끌어서 시간표를 추가할 수도
+        있어요.
       </p>
 
       {shownBlock ? (
@@ -441,9 +425,7 @@ function BlockEditor({
                 type="button"
                 onClick={() => onChange({ weekday: i })}
                 className={`h-10 w-10 rounded-xl text-[15px] font-bold ${
-                  block.weekday === i
-                    ? "bg-accent text-accent-fg"
-                    : "bg-surface-2 text-muted"
+                  block.weekday === i ? "bg-accent text-accent-fg" : "bg-surface-2 text-muted"
                 }`}
               >
                 {d}
