@@ -65,24 +65,24 @@ export function EventCreateForm() {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [title, setTitle] = useState("");
-  const [dates, setDates] = useState<string[]>([]);
+  // 연습 하나는 하루짜리다. 고르지 않았으면 빈 문자열.
+  const [date, setDate] = useState("");
   const [durationMin, setDuration] = useState(120);
   const [error, setError] = useState("");
   const [monthOffset, setMonthOffset] = useState(0);
 
   const { label, cells } = monthCalendar(monthOffset);
 
-  function toggle(value: string) {
-    setDates((prev) =>
-      prev.includes(value) ? prev.filter((d) => d !== value) : [...prev, value],
-    );
+  /** 같은 날을 다시 누르면 선택이 풀리고, 다른 날을 누르면 그 날로 옮겨간다. */
+  function pick(value: string) {
+    setDate((prev) => (prev === value ? "" : value));
   }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     start(async () => {
-      const res = await createMeetEvent({ title, dates, durationMin });
+      const res = await createMeetEvent({ title, dates: [date], durationMin });
       if (!res.ok) {
         setError(res.error);
         return;
@@ -105,8 +105,7 @@ export function EventCreateForm() {
 
       <div>
         <p className="mb-2 text-sm font-semibold text-fg-2">
-          가능한 날짜
-          {dates.length > 0 ? <span className="ml-1 text-accent">{dates.length}일</span> : null}
+          연습할 날짜
         </p>
         <div className="rounded-2xl bg-surface p-3">
           <div className="mb-1 flex items-center justify-between px-1">
@@ -152,13 +151,13 @@ export function EventCreateForm() {
           <div className="grid grid-cols-7 gap-y-1">
             {cells.map((cell, i) => {
               if (!cell) return <span key={`empty-${i}`} />;
-              const on = dates.includes(cell.value);
+              const on = date === cell.value;
               return (
                 <button
                   key={cell.value}
                   type="button"
                   disabled={cell.isPast}
-                  onClick={() => toggle(cell.value)}
+                  onClick={() => pick(cell.value)}
                   aria-pressed={on}
                   aria-label={`${label} ${cell.date}일${cell.isShowcase ? ` · ${SHOWCASE.label}` : ""}`}
                   className="flex flex-col items-center py-1 disabled:cursor-default"
@@ -190,7 +189,9 @@ export function EventCreateForm() {
           </div>
         </div>
 
-        <p className="mt-2 px-1 text-[13px] text-muted">여러 날을 고르면 후보가 늘어나요.</p>
+        <p className="mt-2 px-1 text-[13px] text-muted">
+          하루를 골라주세요. 그날 다 같이 비는 시간을 찾아드려요.
+        </p>
       </div>
 
       <div>
@@ -213,7 +214,7 @@ export function EventCreateForm() {
 
       <ErrorText>{error}</ErrorText>
 
-      <Button type="submit" full disabled={pending || !title.trim() || dates.length === 0}>
+      <Button type="submit" full disabled={pending || !title.trim() || !date}>
         {pending ? "만드는 중…" : "후보 시간 보기"}
       </Button>
     </form>

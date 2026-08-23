@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { cancelMeetEvent, confirmMeetEvent, saveMyAnswers } from "@/actions/events";
-import { formatDate } from "@/lib/candidates";
+import { formatDate, TOP_CANDIDATES } from "@/lib/candidates";
 import { formatMin } from "@/lib/time";
 import { Badge, Button, Card, ErrorText } from "./ui";
 
@@ -38,6 +38,10 @@ export function EventDetail(props: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState("");
+  /** 후보를 다 펼쳤는지. 처음에는 좋은 순으로 앞의 몇 개만 보여준다. */
+  const [showAll, setShowAll] = useState(false);
+  const hiddenCount = props.candidates.length - TOP_CANDIDATES;
+  const shown = showAll ? props.candidates : props.candidates.slice(0, TOP_CANDIDATES);
   const [place, setPlace] = useState("");
 
   // 내가 이미 답한 내용으로 시작
@@ -135,6 +139,13 @@ export function EventDetail(props: Props) {
         <p className="text-[15px] leading-relaxed">
           <span className="font-bold">{props.memberCount}명</span> 중{" "}
           <span className="font-bold text-accent">{props.respondedCount}명</span>이 답했어요.
+          {hiddenCount > 0 ? (
+            <>
+              <br />
+              모일 만한 시간 <span className="font-bold">{TOP_CANDIDATES}개</span>를 먼저
+              보여드려요.
+            </>
+          ) : null}
           {props.relaxed ? (
             <>
               <br />
@@ -159,7 +170,7 @@ export function EventDetail(props: Props) {
         </Card>
       ) : (
         <div className="space-y-2">
-          {props.candidates.map((c) => {
+          {shown.map((c) => {
             const mine = answers[c.slotKey];
             const yes = c.yesIds.filter((id) => id !== props.myId).length + (mine === "yes" ? 1 : 0);
             return (
@@ -219,6 +230,31 @@ export function EventDetail(props: Props) {
               </Card>
             );
           })}
+
+          {hiddenCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => setShowAll((v) => !v)}
+              aria-expanded={showAll}
+              className="flex h-12 w-full items-center justify-center gap-1.5 text-[15px] font-bold text-muted"
+            >
+              {showAll ? "접기" : `다른 시간 ${hiddenCount}개 더 보기`}
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                className={showAll ? "rotate-180" : ""}
+              >
+                <path d="M6 9.5 12 15.5 18 9.5" />
+              </svg>
+            </button>
+          ) : null}
         </div>
       )}
 

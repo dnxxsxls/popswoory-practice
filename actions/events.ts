@@ -14,7 +14,9 @@ const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "날짜 형식이 올
 
 const createSchema = z.object({
   title: z.string().trim().min(1, "연습 이름을 입력해 주세요.").max(30),
-  dates: z.array(dateSchema).min(1, "날짜를 하나 이상 골라주세요.").max(31),
+  // 연습 하나는 하루짜리다. 저장은 예전처럼 배열로 두되(공강 계산이 날짜 목록을
+  // 받는다) 들어올 수 있는 건 하루뿐이다.
+  dates: z.array(dateSchema).length(1, "날짜를 하루 골라주세요."),
   durationMin: z.number().int().min(30).max(600),
 });
 
