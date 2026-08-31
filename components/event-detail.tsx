@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { cancelMeetEvent, confirmMeetEvent, saveMyAnswers } from "@/actions/events";
-import { formatDate, TOP_CANDIDATES } from "@/lib/candidates";
+import { formatDate } from "@/lib/candidates";
 import { formatMin } from "@/lib/time";
 import { Badge, Button, Card, ErrorText } from "./ui";
 
@@ -73,7 +73,6 @@ export function EventDetail(props: Props) {
   const [pending, start] = useTransition();
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [showAll, setShowAll] = useState(false);
   const [place, setPlace] = useState("");
   const [expandedSlotKey, setExpandedSlotKey] = useState<string | null>(null);
   const [selectedSlotKey, setSelectedSlotKey] = useState<string | null>(null);
@@ -84,16 +83,18 @@ export function EventDetail(props: Props) {
     answersOf(props.candidates, props.myId),
   );
 
-  const hiddenCount = Math.max(0, props.candidates.length - TOP_CANDIDATES);
-  const shown = showAll ? props.candidates : props.candidates.slice(0, TOP_CANDIDATES);
   const answeredCount = Object.keys(answers).length;
+  const unansweredCount = props.candidates.length - answeredCount;
+  const answersComplete = props.candidates.length > 0 && unansweredCount === 0;
   const savedAnsweredCount = Object.keys(savedAnswers).length;
+  const savedAnswersComplete =
+    props.candidates.length > 0 && savedAnsweredCount === props.candidates.length;
   const answerKeys = new Set([...Object.keys(answers), ...Object.keys(savedAnswers)]);
   const answersChanged = [...answerKeys].some((key) => answers[key] !== savedAnswers[key]);
   const allMemberIds = Object.keys(props.names);
 
   const effectiveRespondedIds = new Set(props.respondedIds.filter((id) => props.names[id]));
-  if (savedAnsweredCount > 0) effectiveRespondedIds.add(props.myId);
+  if (savedAnswersComplete) effectiveRespondedIds.add(props.myId);
   else effectiveRespondedIds.delete(props.myId);
   const effectiveRespondedCount = effectiveRespondedIds.size;
   const responsePercent =
@@ -135,6 +136,10 @@ export function EventDetail(props: Props) {
   function submitAnswers() {
     setError("");
     setNotice("");
+    if (!answersComplete) {
+      setError(`모든 시간에 답해 주세요. 아직 ${unansweredCount}개가 남았어요.`);
+      return;
+    }
     start(async () => {
       const result = await saveMyAnswers(
         props.eventId,
@@ -236,14 +241,14 @@ export function EventDetail(props: Props) {
       ) : (
         <>
           <div className="px-1">
-            <h2 className="text-[19px] font-extrabold">시간을 한눈에 골라주세요</h2>
+            <h2 className="text-[19px] font-extrabold">가능한 시간을 모두 확인해 주세요</h2>
             <p className="mt-1 text-[14px] leading-relaxed text-muted">
-              가능 또는 불가능을 눌러 답해주세요. 내 선택은 마지막에 한 번 저장됩니다.
+              각 시간에 가능 또는 불가능을 눌러주세요. 전부 답하면 한 번에 저장됩니다.
             </p>
           </div>
 
           <div className="space-y-3">
-            {shown.map((candidate) => {
+            {props.candidates.map((candidate) => {
               const mine = answers[candidate.slotKey];
               const people = candidatePeople(candidate);
               const busyNames = candidate.busyIds
@@ -304,9 +309,9 @@ export function EventDetail(props: Props) {
                       )
                     }
                     aria-expanded={expanded}
-                    className="flex h-11 w-full items-center justify-between border-t border-line/70 bg-surface-2/50 px-4 text-[13px] font-bold text-fg-2"
+                    aria-label={expanded ? "사람별 응답 현황 접기" : "사람별 응답 현황 보기"}
+                    className="flex h-8 w-full items-center justify-center border-t border-line/70 bg-surface-2/50 text-fg-2"
                   >
-                    <span>{expanded ? "사람별 응답 현황 접기" : "사람별 응답 현황 보기"}</span>
                     <svg
                       width="17"
                       height="17"
@@ -363,31 +368,6 @@ export function EventDetail(props: Props) {
             })}
           </div>
 
-          {hiddenCount > 0 ? (
-            <button
-              type="button"
-              onClick={() => setShowAll((visible) => !visible)}
-              aria-expanded={showAll}
-              className="flex h-12 w-full items-center justify-center gap-1.5 text-[15px] font-bold text-muted"
-            >
-              {showAll ? "추천 후보만 보기" : `다른 시간 ${hiddenCount}개 더 보기`}
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-                className={showAll ? "rotate-180" : ""}
-              >
-                <path d="M6 9.5 12 15.5 18 9.5" />
-              </svg>
-            </button>
-          ) : null}
-
           <Card className={answersChanged ? "ring-2 ring-accent" : ""}>
             <div className="flex items-baseline justify-between gap-3">
               <p className="text-[17px] font-bold">내 응답</p>
@@ -396,12 +376,24 @@ export function EventDetail(props: Props) {
               </p>
             </div>
             <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
-              답하지 않은 시간은 미응답으로 표시됩니다.
+              {answersComplete
+                ? "모든 시간에 답했어요. 선택을 확인하고 저장해 주세요."
+                : `모든 시간에 답해야 저장할 수 있어요. 아직 ${unansweredCount}개 남았어요.`}
             </p>
             {notice ? <p className="mt-3 text-[14px] font-bold text-accent">{notice}</p> : null}
             <div className="mt-4">
-              <Button full disabled={pending || !answersChanged} onClick={submitAnswers}>
-                {pending ? "저장 중…" : answersChanged ? "응답 저장하기" : "저장된 상태예요"}
+              <Button
+                full
+                disabled={pending || !answersChanged || !answersComplete}
+                onClick={submitAnswers}
+              >
+                {pending
+                  ? "저장 중…"
+                  : !answersComplete
+                    ? `${unansweredCount}개 더 답해 주세요`
+                    : answersChanged
+                      ? "응답 저장하기"
+                      : "저장된 상태예요"}
               </Button>
             </div>
           </Card>

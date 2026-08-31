@@ -16,6 +16,7 @@ import {
   type UpcomingItem,
 } from "@/components/home-dashboard";
 import { slotKeyOf, todayKst } from "@/lib/candidates";
+import { buildEventView } from "@/lib/event-view";
 import { AppShell } from "@/components/app-shell";
 
 export default async function HomePage() {
@@ -92,28 +93,21 @@ export default async function HomePage() {
       };
     });
 
-  const polling: PollingItem[] = events
-    .filter((e) => e.status === "polling")
-    .map((e) => {
-      const eventMemberIds = new Set(
-        scopedMembers
-          .filter((candidate) => e.groupNo !== null && candidate.groupNos.includes(e.groupNo))
-          .map((candidate) => candidate.id),
-      );
-      return {
-        id: e.id,
-        groupNo: e.groupNo!,
-        title: e.title,
-        dateCount: e.dates.length,
-        answered: responses.some((r) => r.eventId === e.id && r.memberId === me.memberId),
-        respondedCount: new Set(
-          responses
-            .filter((r) => r.eventId === e.id && eventMemberIds.has(r.memberId))
-            .map((r) => r.memberId),
-        ).size,
-        memberCount: eventMemberIds.size,
-      };
-    });
+  const pollingViews = await Promise.all(
+    events.filter((event) => event.status === "polling").map(buildEventView),
+  );
+  const polling: PollingItem[] = pollingViews.map((view) => {
+    const event = view.event;
+    return {
+      id: event.id,
+      groupNo: event.groupNo!,
+      title: event.title,
+      dateCount: event.dates.length,
+      answered: view.respondedIds.includes(me.memberId),
+      respondedCount: view.respondedIds.length,
+      memberCount: view.members.length,
+    };
+  });
 
   const groupLabel =
     member.groupRole === "mentor"

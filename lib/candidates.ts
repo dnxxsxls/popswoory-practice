@@ -41,9 +41,6 @@ export function formatDate(date: string): string {
   return `${m}월 ${d}일(${labels[weekdayOf(date)]})`;
 }
 
-/** 화면에 먼저 펼쳐 보여줄 후보 수. 나머지는 '더 보기' 뒤에 둔다. */
-export const TOP_CANDIDATES = 6;
-
 /**
  * 가능한 창을 30분 간격으로 전부 만든다.
  *
@@ -138,6 +135,11 @@ function pickSpread(all: Candidate[]): Candidate[] {
   return picked;
 }
 
+/** 추천 기준으로 고른 뒤 화면에서는 날짜와 시작 시각 순서로 읽히게 한다. */
+function chronological(a: Candidate, b: Candidate): number {
+  return a.date.localeCompare(b.date) || a.startMin - b.startMin;
+}
+
 /**
  * 전원 공강 후보를 먼저 찾고, 하나도 없으면 1명까지 빠지는 시간으로 넓힌다.
  * 넓혔는지 여부를 함께 돌려주어 화면에서 안내할 수 있게 한다.
@@ -150,8 +152,13 @@ export function buildCandidates(
   durationMin: number,
 ): { candidates: Candidate[]; relaxed: boolean } {
   const strict = collect(table, dates, durationMin, 0);
-  if (strict.length > 0) return { candidates: pickSpread(strict), relaxed: false };
+  if (strict.length > 0) {
+    return { candidates: pickSpread(strict).sort(chronological), relaxed: false };
+  }
 
   const relaxed = collect(table, dates, durationMin, 1);
-  return { candidates: pickSpread(relaxed), relaxed: relaxed.length > 0 };
+  return {
+    candidates: pickSpread(relaxed).sort(chronological),
+    relaxed: relaxed.length > 0,
+  };
 }

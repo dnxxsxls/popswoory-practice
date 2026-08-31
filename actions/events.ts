@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { requireMember } from "@/lib/guard";
+import { buildEventView } from "@/lib/event-view";
 import {
   canAccessEvent,
   cancelEvent,
@@ -72,6 +73,21 @@ export async function saveMyAnswers(
 
   const parsed = answersSchema.safeParse(answers);
   if (!parsed.success) return { ok: false, error: "응답이 올바르지 않아요." };
+
+  const view = await buildEventView(event);
+  const expected = new Set(view.candidates.map((candidate) => candidate.slotKey));
+  const submitted = new Set(parsed.data.map((answer) => answer.slotKey));
+  const complete =
+    expected.size > 0 &&
+    submitted.size === parsed.data.length &&
+    submitted.size === expected.size &&
+    [...submitted].every((slotKey) => expected.has(slotKey));
+  if (!complete) {
+    return {
+      ok: false,
+      error: "후보 시간이 바뀌었거나 빠진 응답이 있어요. 새로고침한 뒤 모든 시간에 답해 주세요.",
+    };
+  }
 
   await saveResponses(eventId, me.memberId, parsed.data);
   return { ok: true };

@@ -64,7 +64,21 @@ export async function buildEventView(event: MeetEvent): Promise<EventView> {
     };
   });
 
-  const respondedIds = [...new Set(responses.map((r) => r.memberId))];
+  const candidateKeys = withAnswers.map((candidate) => candidate.slotKey);
+  const answeredByMember = new Map<string, Set<string>>();
+  for (const response of responses) {
+    const answered = answeredByMember.get(response.memberId) ?? new Set<string>();
+    answered.add(response.slotKey);
+    answeredByMember.set(response.memberId, answered);
+  }
+  const respondedIds =
+    candidateKeys.length === 0
+      ? []
+      : members
+          .filter((member) =>
+            candidateKeys.every((slotKey) => answeredByMember.get(member.id)?.has(slotKey)),
+          )
+          .map((member) => member.id);
 
   return {
     event,
