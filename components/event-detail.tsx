@@ -3,7 +3,12 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { cancelMeetEvent, saveMyAnswers } from "@/actions/events";
+import {
+  addEventComment,
+  cancelMeetEvent,
+  saveMyAnswers,
+  saveMyAttendance,
+} from "@/actions/events";
 import { formatDate } from "@/lib/candidates";
 import { formatMin } from "@/lib/time";
 import { Badge, Button, Card, ErrorText } from "./ui";
@@ -30,6 +35,9 @@ type Props = {
   names: Record<string, string>;
   candidates: CandidateView[];
   confirmed: { date: string; startMin: number; endMin: number; place: string | null } | null;
+  myAttendance: "going" | "not_going" | null;
+  attendances: { memberId: string; status: "going" | "not_going" }[];
+  comments: { id: string; authorName: string; body: string }[];
 };
 
 type Answer = "yes" | "no";
@@ -75,6 +83,8 @@ export function EventDetail(props: Props) {
   const [pending, start] = useTransition();
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [attendance, setAttendance] = useState(props.myAttendance);
+  const [commentBody, setCommentBody] = useState("");
   const [expandedSlotKey, setExpandedSlotKey] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, Answer>>(() =>
     answersOf(props.candidates, props.myId),
@@ -101,12 +111,25 @@ export function EventDetail(props: Props) {
   const readyToFinalize = allResponded && !answersChanged;
   const responsePercent =
     props.memberCount > 0 ? Math.round((effectiveRespondedCount / props.memberCount) * 100) : 0;
+  const attendanceByMember = new Map(
+    props.attendances.map((current) => [current.memberId, current.status]),
+  );
+  if (attendance) attendanceByMember.set(props.myId, attendance);
+  const goingNames = allMemberIds
+    .filter((id) => attendanceByMember.get(id) === "going")
+    .map((id) => props.names[id]);
+  const notGoingNames = allMemberIds
+    .filter((id) => attendanceByMember.get(id) === "not_going")
+    .map((id) => props.names[id]);
+  const undecidedNames = allMemberIds
+    .filter((id) => !attendanceByMember.has(id))
+    .map((id) => props.names[id]);
 
   useEffect(() => {
-    if (props.status !== "polling") return;
+    if (props.status === "cancelled") return;
 
     const refresh = () => router.refresh();
-    const interval = window.setInterval(refresh, 5_000);
+    const interval = window.setInterval(refresh, props.status === "polling" ? 5_000 : 10_000);
     window.addEventListener("focus", refresh);
     return () => {
       window.clearInterval(interval);
@@ -181,6 +204,36 @@ export function EventDetail(props: Props) {
     });
   }
 
+  function chooseAttendance(status: "going" | "not_going") {
+    setError("");
+    setNotice("");
+    start(async () => {
+      const result = await saveMyAttendance(props.eventId, status);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setAttendance(status);
+      setNotice("참여 여부를 저장했어요.");
+      router.refresh();
+    });
+  }
+
+  function submitComment() {
+    setError("");
+    setNotice("");
+    start(async () => {
+      const result = await addEventComment(props.eventId, commentBody);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setCommentBody("");
+      setNotice("댓글을 남겼어요.");
+      router.refresh();
+    });
+  }
+
   if (props.status === "confirmed" && props.confirmed) {
     const { date, startMin, endMin, place: spot } = props.confirmed;
     return (
@@ -191,10 +244,117 @@ export function EventDetail(props: Props) {
           <p className="mt-1 text-[20px] font-bold text-accent">
             {formatMin(startMin)} – {formatMin(endMin)}
           </p>
-          {spot ? <p className="mt-3 text-[15px] text-fg-2">{spot}</p> : null}
+          <div className="mt-4 rounded-xl bg-surface-2 px-4 py-3">
+            <p className="text-[12px] font-bold text-muted">장소</p>
+            <p className="mt-0.5 text-[15px] font-semibold text-fg-2">{spot || "미정"}</p>
+          </div>
         </Card>
 
         <ErrorText>{error}</ErrorText>
+        {notice ? <p className="px-1 text-[14px] font-bold text-accent">{notice}</p> : null}
+
+        <Card>
+          <h2 className="text-[18px] font-extrabold">내 최종 참여 여부</h2>
+          <p className="mt-1.5 text-[14px] leading-relaxed text-muted">
+            일정이 확정됐어요. 실제 참여 여부를 한 번 더 알려주세요.
+          </p>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={pending}
+              aria-pressed={attendance === "going"}
+              onClick={() => chooseAttendance("going")}
+              className={`h-12 rounded-xl text-[14px] font-bold ${
+                attendance === "going"
+                  ? "bg-accent text-accent-fg"
+                  : "bg-accent-soft text-accent"
+              }`}
+            >
+              참여해요
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              aria-pressed={attendance === "not_going"}
+              onClick={() => chooseAttendance("not_going")}
+              className={`h-12 rounded-xl text-[14px] font-bold ${
+                attendance === "not_going"
+                  ? "bg-danger text-white"
+                  : "bg-surface-2 text-danger"
+              }`}
+            >
+              참여 어려워요
+            </button>
+          </div>
+        </Card>
+
+        <Card>
+          <h2 className="text-[18px] font-extrabold">조원 참여 상태</h2>
+          <div className="mt-4 space-y-2.5 text-[14px] leading-relaxed">
+            <div className="grid grid-cols-[4.5rem_1fr] gap-2">
+              <span className="font-bold text-accent">참여</span>
+              <span className={goingNames.length > 0 ? "text-fg-2" : "text-muted"}>
+                {goingNames.length > 0 ? goingNames.join(", ") : "아직 없음"}
+              </span>
+            </div>
+            <div className="grid grid-cols-[4.5rem_1fr] gap-2">
+              <span className="font-bold text-danger">불참</span>
+              <span className={notGoingNames.length > 0 ? "text-fg-2" : "text-muted"}>
+                {notGoingNames.length > 0 ? notGoingNames.join(", ") : "아직 없음"}
+              </span>
+            </div>
+            <div className="grid grid-cols-[4.5rem_1fr] gap-2">
+              <span className="font-bold text-muted">미정</span>
+              <span className={undecidedNames.length > 0 ? "text-fg-2" : "text-muted"}>
+                {undecidedNames.length > 0 ? undecidedNames.join(", ") : "없음"}
+              </span>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <h2 className="text-[18px] font-extrabold">댓글</h2>
+          <p className="mt-1.5 text-[14px] leading-relaxed text-muted">
+            준비물이나 장소 안내처럼 함께 볼 내용을 자유롭게 남겨주세요.
+          </p>
+
+          {props.comments.length > 0 ? (
+            <div className="mt-4 divide-y divide-line/70 border-y border-line/70">
+              {props.comments.map((comment) => (
+                <div key={comment.id} className="py-3.5">
+                  <p className="text-[13px] font-bold text-accent">{comment.authorName}</p>
+                  <p className="mt-1 whitespace-pre-wrap break-words text-[14px] leading-relaxed text-fg-2">
+                    {comment.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-4 text-[14px] text-muted">아직 남긴 댓글이 없어요.</p>
+          )}
+
+          <form
+            className="mt-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              submitComment();
+            }}
+          >
+            <textarea
+              value={commentBody}
+              onChange={(event) => setCommentBody(event.target.value)}
+              maxLength={500}
+              rows={3}
+              placeholder="댓글을 입력해 주세요"
+              className="min-h-24 w-full resize-none rounded-2xl bg-surface-2 p-4 text-[15px] leading-relaxed outline-none ring-1 ring-inset ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
+            />
+            <div className="mt-2">
+              <Button type="submit" full disabled={pending || commentBody.trim().length === 0}>
+                {pending ? "저장 중…" : "댓글 남기기"}
+              </Button>
+            </div>
+          </form>
+        </Card>
 
         {props.isOwner ? (
           <Button variant="secondary" full disabled={pending} onClick={cancel}>

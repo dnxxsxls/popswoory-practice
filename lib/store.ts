@@ -102,14 +102,39 @@ export type EventResponse = {
   answer: "yes" | "no";
 };
 
+export type EventAttendance = {
+  eventId: string;
+  memberId: string;
+  status: "going" | "not_going";
+  updatedAt: string;
+};
+
+export type EventComment = {
+  id: string;
+  eventId: string;
+  memberId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+};
+
 type Data = {
   members: Member[];
   schedules: Schedule[];
   events: MeetEvent[];
   responses: EventResponse[];
+  attendances: EventAttendance[];
+  comments: EventComment[];
 };
 
-const EMPTY: Data = { members: [], schedules: [], events: [], responses: [] };
+const EMPTY: Data = {
+  members: [],
+  schedules: [],
+  events: [],
+  responses: [],
+  attendances: [],
+  comments: [],
+};
 
 async function read(): Promise<Data> {
   try {
@@ -144,6 +169,8 @@ async function read(): Promise<Data> {
         };
       }),
       responses: parsed.responses ?? [],
+      attendances: parsed.attendances ?? [],
+      comments: parsed.comments ?? [],
       schedules: (parsed.schedules ?? []).map((s) => ({
         ...s,
         // 예전 데이터 호환: kind 가 없으면 수업으로 본다
@@ -436,11 +463,58 @@ export async function listResponses(eventId: string): Promise<EventResponse[]> {
   return data.responses.filter((r) => r.eventId === eventId);
 }
 
-/** 여러 이벤트의 답을 한 번에. 홈에서 이벤트마다 파일을 다시 읽지 않으려고 둔다. */
-export async function listResponsesForEvents(eventIds: string[]): Promise<EventResponse[]> {
+export async function listEventAttendances(eventId: string): Promise<EventAttendance[]> {
   const data = await read();
-  const want = new Set(eventIds);
-  return data.responses.filter((r) => want.has(r.eventId));
+  return data.attendances.filter((attendance) => attendance.eventId === eventId);
+}
+
+export async function saveEventAttendance(
+  eventId: string,
+  memberId: string,
+  status: EventAttendance["status"],
+): Promise<void> {
+  return withLock(async () => {
+    const data = await read();
+    data.attendances = data.attendances.filter(
+      (attendance) => !(attendance.eventId === eventId && attendance.memberId === memberId),
+    );
+    data.attendances.push({
+      eventId,
+      memberId,
+      status,
+      updatedAt: new Date().toISOString(),
+    });
+    await write(data);
+  });
+}
+
+export async function listEventComments(eventId: string): Promise<EventComment[]> {
+  const data = await read();
+  return data.comments
+    .filter((comment) => comment.eventId === eventId)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+export async function addEventComment(
+  eventId: string,
+  memberId: string,
+  authorName: string,
+  body: string,
+): Promise<EventComment> {
+  return withLock(async () => {
+    const data = await read();
+    const comment: EventComment = {
+      id: randomUUID(),
+      eventId,
+      memberId,
+      authorName,
+      body: body.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    data.comments.push(comment);
+    await write(data);
+    return comment;
+  });
 }
 
 /** 한 멤버의 답을 통째로 갈아끼운다. */

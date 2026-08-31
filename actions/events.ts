@@ -4,12 +4,14 @@ import { z } from "zod";
 import { requireMember } from "@/lib/guard";
 import { buildEventView } from "@/lib/event-view";
 import {
+  addEventComment as insertEventComment,
   canAccessEvent,
   cancelEvent,
   confirmEvent,
   createEvent,
   getEvent,
   getMember,
+  saveEventAttendance,
   saveResponses,
 } from "@/lib/store";
 
@@ -19,6 +21,12 @@ const confirmSchema = z.object({
   startMin: z.number().int().min(0).max(24 * 60 - 1),
   place: z.string().trim().max(40, "장소는 40자까지 입력할 수 있어요."),
 });
+const attendanceSchema = z.enum(["going", "not_going"]);
+const commentSchema = z
+  .string()
+  .trim()
+  .min(1, "내용을 입력해 주세요.")
+  .max(500, "댓글은 500자까지 남길 수 있어요.");
 
 const createSchema = z.object({
   title: z.string().trim().min(1, "연습 이름을 입력해 주세요.").max(30),
@@ -140,6 +148,44 @@ export async function confirmMeetEvent(
     parsed.data.place,
   );
   if (!confirmed) return { ok: false, error: "이미 처리된 일정이에요." };
+  return { ok: true };
+}
+
+export async function saveMyAttendance(
+  eventId: string,
+  status: unknown,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const me = await requireMember();
+  const event = await getAccessibleEvent(eventId, me.memberId);
+  if (!event) return { ok: false, error: "연습 일정을 찾지 못했어요." };
+  if (event.status !== "confirmed") {
+    return { ok: false, error: "시간이 확정된 연습에서만 참여 여부를 정할 수 있어요." };
+  }
+
+  const parsed = attendanceSchema.safeParse(status);
+  if (!parsed.success) return { ok: false, error: "참여 여부가 올바르지 않아요." };
+
+  await saveEventAttendance(event.id, me.memberId, parsed.data);
+  return { ok: true };
+}
+
+export async function addEventComment(
+  eventId: string,
+  body: unknown,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const me = await requireMember();
+  const event = await getAccessibleEvent(eventId, me.memberId);
+  if (!event) return { ok: false, error: "연습 일정을 찾지 못했어요." };
+  if (event.status !== "confirmed") {
+    return { ok: false, error: "시간이 확정된 연습에만 댓글을 남길 수 있어요." };
+  }
+
+  const parsed = commentSchema.safeParse(body);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "댓글이 올바르지 않아요." };
+  }
+
+  await insertEventComment(event.id, me.memberId, me.displayName, parsed.data);
   return { ok: true };
 }
 

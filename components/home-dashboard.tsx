@@ -5,7 +5,7 @@ import { formatMin } from "@/lib/time";
 export type TimetableState = "none" | "uploaded" | "manual" | "parsed";
 import { Badge, Card } from "./ui";
 
-/** 확정된 연습 하나. 참석 집계까지 끝난 상태로 받는다. */
+/** 확정된 연습 하나. 날짜·시간·장소만 홈에 보여준다. */
 export type UpcomingItem = {
   id: string;
   groupNo: number;
@@ -15,10 +15,6 @@ export type UpcomingItem = {
   startMin: number;
   durationMin: number;
   place: string | null;
-  goingNames: string[];
-  declined: number;
-  noReply: number;
-  memberCount: number;
 };
 
 /** 아직 시간을 고르는 중인 연습. */
@@ -101,52 +97,20 @@ export function HomeDashboard({
         </Card>
       ) : null}
 
-      {/* ── 다가오는 연습: 언제 · 어디서 · 누가 ── */}
+      {/* ── 다가오는 연습: 언제 · 어디서 ── */}
       {upcoming.map((e) => (
         <Link key={e.id} href={`/events/${e.id}`} className="block">
           <Card className="ring-2 ring-accent">
             <Badge tone="accent">{e.groupNo}조 · 다가오는 연습</Badge>
             <p className="mt-2.5 truncate text-[19px] font-extrabold">{e.title}</p>
 
-            <p className="mt-1.5 text-[17px] font-bold text-accent">
-              {formatDate(e.date)} {formatMin(e.startMin)}
-              <span className="text-muted">
-                {" – "}
-                {formatMin(e.startMin + e.durationMin)}
-              </span>
+            <p className="mt-3 text-[20px] font-extrabold">{formatDate(e.date)}</p>
+            <p className="mt-1 text-[18px] font-bold text-accent">
+              {formatMin(e.startMin)} – {formatMin(e.startMin + e.durationMin)}
             </p>
-            <p className="mt-1 text-[15px] text-muted">{e.place || "장소 미정"}</p>
-
-            <div className="mt-4 border-t border-line/70 pt-4">
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="text-[15px] font-bold">오는 사람</p>
-                <p className="text-[15px] font-semibold text-muted">
-                  <span className="text-accent">{e.goingNames.length}</span> / {e.memberCount}명
-                </p>
-              </div>
-
-              {e.goingNames.length > 0 ? (
-                <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  {e.goingNames.map((name) => (
-                    <span
-                      key={name}
-                      className="max-w-[9rem] truncate rounded-lg bg-accent-soft px-2.5 py-1 text-[13px] font-bold text-accent"
-                    >
-                      {name}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-2.5 text-[15px] text-muted">아직 온다고 한 사람이 없어요.</p>
-              )}
-
-              {e.declined > 0 || e.noReply > 0 ? (
-                <p className="mt-3 text-[13px] text-muted">
-                  {e.declined > 0 ? `못 옴 ${e.declined}명` : null}
-                  {e.declined > 0 && e.noReply > 0 ? " · " : null}
-                  {e.noReply > 0 ? `미응답 ${e.noReply}명` : null}
-                </p>
-              ) : null}
+            <div className="mt-4 rounded-xl bg-surface-2 px-4 py-3">
+              <p className="text-[12px] font-bold text-muted">장소</p>
+              <p className="mt-0.5 text-[15px] font-semibold text-fg-2">{e.place || "미정"}</p>
             </div>
           </Card>
         </Link>

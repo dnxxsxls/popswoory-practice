@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireOnboarded } from "@/lib/guard";
-import { canAccessEvent, getEvent, getMember } from "@/lib/store";
+import {
+  canAccessEvent,
+  getEvent,
+  getMember,
+  listEventAttendances,
+  listEventComments,
+} from "@/lib/store";
 import { buildEventView } from "@/lib/event-view";
 import { formatDate } from "@/lib/candidates";
 import { AppShell } from "@/components/app-shell";
@@ -16,7 +22,11 @@ export default async function EventPage({ params }: PageProps<"/events/[id]">) {
     notFound();
   }
 
-  const view = await buildEventView(event);
+  const [view, attendances, comments] = await Promise.all([
+    buildEventView(event),
+    listEventAttendances(event.id),
+    listEventComments(event.id),
+  ]);
 
   const confirmed =
     event.status === "confirmed" && event.confirmedDate && event.confirmedStartMin !== null
@@ -47,6 +57,15 @@ export default async function EventPage({ params }: PageProps<"/events/[id]">) {
         names={view.names}
         candidates={view.candidates}
         confirmed={confirmed}
+        myAttendance={
+          attendances.find((attendance) => attendance.memberId === me.memberId)?.status ?? null
+        }
+        attendances={attendances.map(({ memberId, status }) => ({ memberId, status }))}
+        comments={comments.map(({ id: commentId, authorName, body }) => ({
+          id: commentId,
+          authorName,
+          body,
+        }))}
       />
 
       <Link

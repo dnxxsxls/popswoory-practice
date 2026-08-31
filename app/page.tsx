@@ -6,7 +6,6 @@ import {
   listActiveSchedules,
   listEvents,
   listMembers,
-  listResponsesForEvents,
 } from "@/lib/store";
 import {
   HomeDashboard,
@@ -15,7 +14,7 @@ import {
   type PollingItem,
   type UpcomingItem,
 } from "@/components/home-dashboard";
-import { slotKeyOf, todayKst } from "@/lib/candidates";
+import { todayKst } from "@/lib/candidates";
 import { buildEventView } from "@/lib/event-view";
 import { AppShell } from "@/components/app-shell";
 
@@ -52,8 +51,6 @@ export default async function HomePage() {
     </>
   );
 
-  const responses = await listResponsesForEvents(events.map((e) => e.id));
-  const names = new Map(scopedMembers.map((candidate) => [candidate.id, candidate.displayName]));
   const today = todayKst();
 
   // 확정된 연습 중 아직 지나지 않은 것만, 가까운 날짜부터.
@@ -66,32 +63,15 @@ export default async function HomePage() {
         e.confirmedDate >= today,
     )
     .sort((a, b) => (a.confirmedDate ?? "").localeCompare(b.confirmedDate ?? ""))
-    .map((e) => {
-      const eventMembers = scopedMembers.filter((candidate) =>
-        e.groupNo !== null && candidate.groupNos.includes(e.groupNo),
-      );
-      const eventMemberIds = new Set(eventMembers.map((candidate) => candidate.id));
-      // 확정된 시각에 '가능' 이라고 답한 사람을 참석자로 본다.
-      const key = slotKeyOf({ date: e.confirmedDate!, startMin: e.confirmedStartMin! });
-      const forSlot = responses.filter(
-        (r) => r.eventId === e.id && r.slotKey === key && eventMemberIds.has(r.memberId),
-      );
-      const going = forSlot.filter((r) => r.answer === "yes");
-      const declined = forSlot.filter((r) => r.answer === "no").length;
-      return {
-        id: e.id,
-        groupNo: e.groupNo!,
-        title: e.title,
-        date: e.confirmedDate!,
-        startMin: e.confirmedStartMin!,
-        durationMin: e.durationMin,
-        place: e.place,
-        goingNames: going.map((r) => names.get(r.memberId) ?? "?"),
-        declined,
-        noReply: Math.max(0, eventMembers.length - going.length - declined),
-        memberCount: eventMembers.length,
-      };
-    });
+    .map((e) => ({
+      id: e.id,
+      groupNo: e.groupNo!,
+      title: e.title,
+      date: e.confirmedDate!,
+      startMin: e.confirmedStartMin!,
+      durationMin: e.durationMin,
+      place: e.place,
+    }));
 
   const pollingViews = await Promise.all(
     events.filter((event) => event.status === "polling").map(buildEventView),
