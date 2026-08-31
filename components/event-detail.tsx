@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { cancelMeetEvent, confirmMeetEvent, saveMyAnswers } from "@/actions/events";
+import { cancelMeetEvent, saveMyAnswers } from "@/actions/events";
 import { formatDate } from "@/lib/candidates";
 import { formatMin } from "@/lib/time";
 import { Badge, Button, Card, ErrorText } from "./ui";
@@ -74,9 +75,7 @@ export function EventDetail(props: Props) {
   const [pending, start] = useTransition();
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [place, setPlace] = useState("");
   const [expandedSlotKey, setExpandedSlotKey] = useState<string | null>(null);
-  const [selectedSlotKey, setSelectedSlotKey] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, Answer>>(() =>
     answersOf(props.candidates, props.myId),
   );
@@ -102,10 +101,6 @@ export function EventDetail(props: Props) {
   const readyToFinalize = allResponded && !answersChanged;
   const responsePercent =
     props.memberCount > 0 ? Math.round((effectiveRespondedCount / props.memberCount) * 100) : 0;
-  const selectedCandidate = props.candidates.find((c) => c.slotKey === selectedSlotKey) ?? null;
-  const unanimousCandidateCount = props.candidates.filter(
-    (candidate) => candidatePeople(candidate).yesNames.length === props.memberCount,
-  ).length;
 
   useEffect(() => {
     if (props.status !== "polling") return;
@@ -169,23 +164,6 @@ export function EventDetail(props: Props) {
       }
       setSavedAnswers({ ...answers });
       setNotice(answeredCount > 0 ? "내 응답을 저장했어요." : "저장한 응답을 모두 지웠어요.");
-      router.refresh();
-    });
-  }
-
-  function confirm(candidate: CandidateView) {
-    setError("");
-    start(async () => {
-      const result = await confirmMeetEvent(
-        props.eventId,
-        candidate.date,
-        candidate.startMin,
-        place,
-      );
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
       router.refresh();
     });
   }
@@ -401,76 +379,16 @@ export function EventDetail(props: Props) {
         props.isOwner ? (
           <Card className="ring-2 ring-accent">
             <Badge tone="accent">전원 응답 완료</Badge>
-            <h2 className="mt-3 text-[20px] font-extrabold">최종 시간을 정해 주세요</h2>
+            <h2 className="mt-3 text-[20px] font-extrabold">이제 최종 시간을 정할 차례예요</h2>
             <p className="mt-1.5 text-[14px] leading-relaxed text-muted">
-              {unanimousCandidateCount > 0
-                ? `전원이 가능한 시간이 ${unanimousCandidateCount}개 있어요.`
-                : "전원이 가능한 시간은 없어요. 응답 인원을 비교해 한 시간을 골라주세요."}
+              다음 화면에서 모두의 응답을 비교하고 한 시간을 확정해 주세요.
             </p>
-
-            <div className="mt-4 space-y-2" role="radiogroup" aria-label="최종 연습 시간">
-              {props.candidates.map((candidate) => {
-                const selected = selectedSlotKey === candidate.slotKey;
-                const people = candidatePeople(candidate);
-                const unanimous = people.yesNames.length === props.memberCount;
-                return (
-                  <button
-                    key={candidate.slotKey}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    disabled={pending}
-                    onClick={() => setSelectedSlotKey(candidate.slotKey)}
-                    className={`flex w-full items-center justify-between gap-3 rounded-2xl p-4 text-left ${
-                      selected
-                        ? "bg-accent-soft ring-2 ring-inset ring-accent"
-                        : "bg-surface-2 ring-1 ring-inset ring-line"
-                    }`}
-                  >
-                    <span className="min-w-0">
-                      <span className="block text-[13px] font-bold text-muted">
-                        {formatDate(candidate.date)}
-                      </span>
-                      <span className="mt-0.5 block text-[17px] font-extrabold tabular-nums text-fg">
-                        {formatMin(candidate.startMin)}–{formatMin(candidate.endMin)}
-                      </span>
-                    </span>
-                    <span
-                      className={`shrink-0 text-[13px] font-bold ${
-                        unanimous ? "text-accent" : "text-muted"
-                      }`}
-                    >
-                      {unanimous
-                        ? "전원 가능"
-                        : `${people.yesNames.length}명 가능 · ${people.noNames.length}명 불가`}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <label className="mt-5 block">
-              <span className="mb-2 block text-[14px] font-bold text-fg-2">장소 (선택)</span>
-              <input
-                value={place}
-                onChange={(e) => setPlace(e.target.value.slice(0, 40))}
-                placeholder="예: 합주실 A"
-                className="h-14 w-full rounded-2xl bg-surface-2 px-4 text-[15px] outline-none ring-1 ring-inset ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
-              />
-            </label>
-            <div className="mt-3">
-              <Button
-                full
-                disabled={pending || !selectedCandidate}
-                onClick={() => selectedCandidate && confirm(selectedCandidate)}
-              >
-                {pending
-                  ? "확정 중…"
-                  : selectedCandidate
-                    ? "이 시간으로 최종 확정"
-                    : "시간을 먼저 골라 주세요"}
-              </Button>
-            </div>
+            <Link
+              href={`/events/${props.eventId}/confirm`}
+              className="mt-4 flex h-14 w-full items-center justify-center rounded-2xl bg-accent px-5 text-[17px] font-bold text-accent-fg hover:bg-accent-press"
+            >
+              다음: 최종 시간 정하기 →
+            </Link>
           </Card>
         ) : (
           <Card className="ring-2 ring-accent">

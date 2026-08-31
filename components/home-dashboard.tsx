@@ -156,7 +156,11 @@ export function HomeDashboard({
       {polling.map((e) => {
         const confirmationRequired = e.allResponded && e.canConfirm;
         return (
-          <Link key={e.id} href={`/events/${e.id}`} className="block">
+          <Link
+            key={e.id}
+            href={confirmationRequired ? `/events/${e.id}/confirm` : `/events/${e.id}`}
+            className="block"
+          >
             <Card className={!e.answered || confirmationRequired ? "ring-2 ring-accent" : ""}>
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
