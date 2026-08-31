@@ -31,6 +31,8 @@ export type PollingItem = {
   answered: boolean;
   respondedCount: number;
   memberCount: number;
+  allResponded: boolean;
+  canConfirm: boolean;
 };
 
 type Props = {
@@ -43,6 +45,9 @@ type Props = {
 
 export function homeSubtitle(upcoming: UpcomingItem[], polling: PollingItem[]): string {
   if (upcoming.length > 0) return `다가오는 연습 ${upcoming.length}개`;
+  if (polling.some((event) => event.allResponded && event.canConfirm)) {
+    return "최종 시간을 정할 연습이 있어요";
+  }
   if (polling.length > 0) return "시간 고르는 중인 연습이 있어요";
   return "잡혀 있는 연습이 없어요";
 }
@@ -148,24 +153,39 @@ export function HomeDashboard({
       ))}
 
       {/* ── 아직 시간 고르는 중 ── */}
-      {polling.map((e) => (
-        <Link key={e.id} href={`/events/${e.id}`} className="block">
-          <Card className={e.answered ? "" : "ring-2 ring-accent"}>
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <Badge>{e.groupNo}조</Badge>
-                <p className="mt-2 truncate text-[17px] font-bold">{e.title}</p>
-                <p className="mt-1 text-[15px] text-muted">
-                  후보 {e.dateCount}일 · {e.respondedCount}/{e.memberCount}명 답함
-                </p>
+      {polling.map((e) => {
+        const confirmationRequired = e.allResponded && e.canConfirm;
+        return (
+          <Link key={e.id} href={`/events/${e.id}`} className="block">
+            <Card className={!e.answered || confirmationRequired ? "ring-2 ring-accent" : ""}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <Badge tone={e.allResponded ? "accent" : "muted"}>
+                    {e.groupNo}조{e.allResponded ? " · 응답 완료" : ""}
+                  </Badge>
+                  <p className="mt-2 truncate text-[17px] font-bold">{e.title}</p>
+                  <p className="mt-1 text-[15px] text-muted">
+                    {e.allResponded
+                      ? e.canConfirm
+                        ? "최종 시간을 골라주세요"
+                        : "일정 생성자의 확정을 기다리는 중"
+                      : `후보 ${e.dateCount}일 · ${e.respondedCount}/${e.memberCount}명 답함`}
+                  </p>
+                </div>
+                <span className="shrink-0 text-[15px] font-bold text-accent">
+                  {confirmationRequired
+                    ? "시간 확정하기 →"
+                    : e.allResponded
+                      ? "확정 대기"
+                      : e.answered
+                        ? "답 바꾸기 →"
+                        : "답하기 →"}
+                </span>
               </div>
-              <span className="shrink-0 text-[15px] font-bold text-accent">
-                {e.answered ? "답 바꾸기 →" : "답하기 →"}
-              </span>
-            </div>
-          </Card>
-        </Link>
-      ))}
+            </Card>
+          </Link>
+        );
+      })}
 
       {upcoming.length === 0 && polling.length === 0 ? (
         <Card>

@@ -468,7 +468,7 @@ export async function confirmEvent(
   return withLock(async () => {
     const data = await read();
     const event = data.events.find((e) => e.id === eventId);
-    if (!event) return null;
+    if (!event || event.status !== "polling") return null;
     event.status = "confirmed";
     event.confirmedDate = date;
     event.confirmedStartMin = startMin;

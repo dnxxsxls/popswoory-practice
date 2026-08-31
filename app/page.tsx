@@ -106,6 +106,8 @@ export default async function HomePage() {
       answered: view.respondedIds.includes(me.memberId),
       respondedCount: view.respondedIds.length,
       memberCount: view.members.length,
+      allResponded: view.members.length > 0 && view.respondedIds.length === view.members.length,
+      canConfirm: event.createdBy === me.memberId || me.role === "admin",
     };
   });
 

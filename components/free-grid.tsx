@@ -55,6 +55,7 @@ export function FreeGrid({ table, names }: Props) {
           <>
             {table.slots[weekday]?.map((slot, i) => {
               const isSelected = picked?.weekday === weekday && picked?.index === i;
+              const isAllFree = table.totalKnown > 0 && slot.busyIds.length === 0;
               return (
                 <button
                   key={i}
@@ -66,7 +67,9 @@ export function FreeGrid({ table, names }: Props) {
                     // 칸이 색으로 채워져 프레임의 정시 선을 가리므로 여기서 다시 그린다
                     i % 2 === 1 ? "border-b border-line" : ""
                   } ${partialTone(slot.freeIds.length, table.totalKnown)} ${
-                    isSelected ? "relative z-20 ring-2 ring-inset ring-accent" : ""
+                    isSelected
+                      ? `relative z-20 ring-2 ring-inset ${isAllFree ? "ring-white" : "ring-accent"}`
+                      : ""
                   }`}
                 />
               );

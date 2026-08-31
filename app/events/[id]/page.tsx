@@ -39,6 +39,7 @@ export default async function EventPage({ params }: PageProps<"/events/[id]">) {
         eventId={event.id}
         status={event.status}
         isOwner={event.createdBy === me.memberId || me.role === "admin"}
+        creatorName={view.names[event.createdBy] ?? "일정 생성자"}
         myId={me.memberId}
         memberCount={view.members.length}
         respondedIds={view.respondedIds}

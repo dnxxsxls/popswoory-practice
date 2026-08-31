@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { cancelMeetEvent, confirmMeetEvent, saveMyAnswers } from "@/actions/events";
 import { formatDate } from "@/lib/candidates";
@@ -21,6 +21,7 @@ type Props = {
   eventId: string;
   status: "polling" | "confirmed" | "cancelled";
   isOwner: boolean;
+  creatorName: string;
   myId: string;
   memberCount: number;
   respondedIds: string[];
@@ -97,9 +98,26 @@ export function EventDetail(props: Props) {
   if (savedAnswersComplete) effectiveRespondedIds.add(props.myId);
   else effectiveRespondedIds.delete(props.myId);
   const effectiveRespondedCount = effectiveRespondedIds.size;
+  const allResponded = props.memberCount > 0 && effectiveRespondedCount === props.memberCount;
+  const readyToFinalize = allResponded && !answersChanged;
   const responsePercent =
     props.memberCount > 0 ? Math.round((effectiveRespondedCount / props.memberCount) * 100) : 0;
   const selectedCandidate = props.candidates.find((c) => c.slotKey === selectedSlotKey) ?? null;
+  const unanimousCandidateCount = props.candidates.filter(
+    (candidate) => candidatePeople(candidate).yesNames.length === props.memberCount,
+  ).length;
+
+  useEffect(() => {
+    if (props.status !== "polling") return;
+
+    const refresh = () => router.refresh();
+    const interval = window.setInterval(refresh, 5_000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [props.status, router]);
 
   function candidatePeople(candidate: CandidateView) {
     const yes = new Set(candidate.yesIds);
@@ -254,14 +272,10 @@ export function EventDetail(props: Props) {
               const busyNames = candidate.busyIds
                 .map((id) => props.names[id])
                 .filter((name): name is string => Boolean(name));
-              const selected = selectedSlotKey === candidate.slotKey;
               const expanded = expandedSlotKey === candidate.slotKey;
 
               return (
-                <Card
-                  key={candidate.slotKey}
-                  className={`!p-0 overflow-hidden ${selected ? "ring-2 ring-accent" : ""}`}
-                >
+                <Card key={candidate.slotKey} className="!p-0 overflow-hidden">
                   <div className="p-4">
                     <div className="grid grid-cols-[minmax(0,1fr)_3.75rem_3.75rem] items-center gap-2">
                       <div className="min-w-0">
@@ -342,25 +356,6 @@ export function EventDetail(props: Props) {
                         <PeopleLine label="불가" people={people.noNames} tone="no" />
                         <PeopleLine label="미응답" people={people.pendingNames} tone="pending" />
                       </div>
-
-                      {props.isOwner ? (
-                        <button
-                          type="button"
-                          disabled={pending}
-                          onClick={() =>
-                            setSelectedSlotKey((previous) =>
-                              previous === candidate.slotKey ? null : candidate.slotKey,
-                            )
-                          }
-                          className={`mt-3 h-11 w-full rounded-xl text-[14px] font-bold ${
-                            selected
-                              ? "bg-accent text-accent-fg"
-                              : "bg-surface text-fg-2 ring-1 ring-inset ring-line"
-                          }`}
-                        >
-                          {selected ? "확정 후보로 선택됨" : "이 시간을 확정 후보로 선택"}
-                        </button>
-                      ) : null}
                     </div>
                   ) : null}
                 </Card>
@@ -402,31 +397,90 @@ export function EventDetail(props: Props) {
 
       <ErrorText>{error}</ErrorText>
 
-      {props.isOwner && selectedCandidate ? (
-        <Card className="ring-2 ring-accent">
-          <Badge tone="accent">관리자 확정</Badge>
-          <p className="mt-3 text-[17px] font-bold text-accent">
-            {formatMin(selectedCandidate.startMin)} – {formatMin(selectedCandidate.endMin)}
-          </p>
-          {effectiveRespondedCount < props.memberCount ? (
-            <p className="mt-3 text-[13px] leading-relaxed text-danger">
-              아직 {props.memberCount - effectiveRespondedCount}명이 응답하지 않았어요. 그래도 확정할 수
-              있습니다.
+      {readyToFinalize ? (
+        props.isOwner ? (
+          <Card className="ring-2 ring-accent">
+            <Badge tone="accent">전원 응답 완료</Badge>
+            <h2 className="mt-3 text-[20px] font-extrabold">최종 시간을 정해 주세요</h2>
+            <p className="mt-1.5 text-[14px] leading-relaxed text-muted">
+              {unanimousCandidateCount > 0
+                ? `전원이 가능한 시간이 ${unanimousCandidateCount}개 있어요.`
+                : "전원이 가능한 시간은 없어요. 응답 인원을 비교해 한 시간을 골라주세요."}
             </p>
-          ) : null}
-          <input
-            value={place}
-            onChange={(e) => setPlace(e.target.value.slice(0, 40))}
-            placeholder="장소 (선택)"
-            className="mt-4 h-14 w-full rounded-2xl bg-surface-2 px-4 text-[15px] outline-none placeholder:text-muted"
-            aria-label="장소"
-          />
-          <div className="mt-3">
-            <Button full disabled={pending} onClick={() => confirm(selectedCandidate)}>
-              {pending ? "확정 중…" : "이 시간으로 최종 확정"}
-            </Button>
-          </div>
-        </Card>
+
+            <div className="mt-4 space-y-2" role="radiogroup" aria-label="최종 연습 시간">
+              {props.candidates.map((candidate) => {
+                const selected = selectedSlotKey === candidate.slotKey;
+                const people = candidatePeople(candidate);
+                const unanimous = people.yesNames.length === props.memberCount;
+                return (
+                  <button
+                    key={candidate.slotKey}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    disabled={pending}
+                    onClick={() => setSelectedSlotKey(candidate.slotKey)}
+                    className={`flex w-full items-center justify-between gap-3 rounded-2xl p-4 text-left ${
+                      selected
+                        ? "bg-accent-soft ring-2 ring-inset ring-accent"
+                        : "bg-surface-2 ring-1 ring-inset ring-line"
+                    }`}
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-bold text-muted">
+                        {formatDate(candidate.date)}
+                      </span>
+                      <span className="mt-0.5 block text-[17px] font-extrabold tabular-nums text-fg">
+                        {formatMin(candidate.startMin)}–{formatMin(candidate.endMin)}
+                      </span>
+                    </span>
+                    <span
+                      className={`shrink-0 text-[13px] font-bold ${
+                        unanimous ? "text-accent" : "text-muted"
+                      }`}
+                    >
+                      {unanimous
+                        ? "전원 가능"
+                        : `${people.yesNames.length}명 가능 · ${people.noNames.length}명 불가`}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <label className="mt-5 block">
+              <span className="mb-2 block text-[14px] font-bold text-fg-2">장소 (선택)</span>
+              <input
+                value={place}
+                onChange={(e) => setPlace(e.target.value.slice(0, 40))}
+                placeholder="예: 합주실 A"
+                className="h-14 w-full rounded-2xl bg-surface-2 px-4 text-[15px] outline-none ring-1 ring-inset ring-line placeholder:text-muted focus:ring-2 focus:ring-accent"
+              />
+            </label>
+            <div className="mt-3">
+              <Button
+                full
+                disabled={pending || !selectedCandidate}
+                onClick={() => selectedCandidate && confirm(selectedCandidate)}
+              >
+                {pending
+                  ? "확정 중…"
+                  : selectedCandidate
+                    ? "이 시간으로 최종 확정"
+                    : "시간을 먼저 골라 주세요"}
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <Card className="ring-2 ring-accent">
+            <Badge tone="accent">전원 응답 완료</Badge>
+            <h2 className="mt-3 text-[19px] font-extrabold">모두 답했어요</h2>
+            <p className="mt-1.5 text-[14px] leading-relaxed text-muted">
+              {props.creatorName}님이 최종 시간을 정하면 확정된 일정을 알려드릴게요.
+            </p>
+          </Card>
+        )
       ) : null}
 
       {props.isOwner ? (

@@ -14,6 +14,11 @@ import {
 } from "@/lib/store";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "날짜 형식이 올바르지 않아요.");
+const confirmSchema = z.object({
+  date: dateSchema,
+  startMin: z.number().int().min(0).max(24 * 60 - 1),
+  place: z.string().trim().max(40, "장소는 40자까지 입력할 수 있어요."),
+});
 
 const createSchema = z.object({
   title: z.string().trim().min(1, "연습 이름을 입력해 주세요.").max(30),
@@ -106,9 +111,35 @@ export async function confirmMeetEvent(
   if (event.createdBy !== me.memberId && me.role !== "admin") {
     return { ok: false, error: "일정을 만든 사람만 확정할 수 있어요." };
   }
-  if (!dateSchema.safeParse(date).success) return { ok: false, error: "날짜가 올바르지 않아요." };
+  if (event.status !== "polling") return { ok: false, error: "이미 처리된 일정이에요." };
 
-  await confirmEvent(eventId, date, startMin, place);
+  const parsed = confirmSchema.safeParse({ date, startMin, place });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "확정 정보가 올바르지 않아요." };
+  }
+
+  const view = await buildEventView(event);
+  const allResponded =
+    view.members.length > 0 && view.respondedIds.length === view.members.length;
+  if (!allResponded) {
+    return { ok: false, error: "모든 조원이 응답한 뒤 최종 시간을 확정할 수 있어요." };
+  }
+
+  const candidate = view.candidates.find(
+    (current) =>
+      current.date === parsed.data.date && current.startMin === parsed.data.startMin,
+  );
+  if (!candidate) {
+    return { ok: false, error: "후보 시간이 바뀌었어요. 새로고침한 뒤 다시 골라주세요." };
+  }
+
+  const confirmed = await confirmEvent(
+    eventId,
+    parsed.data.date,
+    parsed.data.startMin,
+    parsed.data.place,
+  );
+  if (!confirmed) return { ok: false, error: "이미 처리된 일정이에요." };
   return { ok: true };
 }
 
