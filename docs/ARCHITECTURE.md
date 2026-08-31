@@ -12,7 +12,7 @@
 | DB | Supabase Postgres | 관계형 모델에 적합, 배열/JSONB/전문검색 지원 |
 | 파일 | Supabase Storage (private bucket) | 서명 URL로 비공개 배포 |
 | 실시간 | Supabase Realtime | 조율 화면 히트맵 동시 갱신 |
-| 인증 | **자체 세션(PIN 기반)** — 아래 2장 | Supabase Auth는 이메일/전화 전제라 "개인정보 미수집" 요건과 충돌 |
+| 인증 | **자체 아이디·비밀번호 세션** — 아래 2장 | Supabase Auth는 이메일/전화 전제라 "개인정보 미수집" 요건과 충돌 |
 | 스타일 | Tailwind CSS + shadcn/ui | 속도, 다크모드 |
 | 상태/데이터 | 서버 컴포넌트 + 서버 액션 중심, 클라이언트는 TanStack Query 최소 사용 | 격자 편집만 클라이언트 상태 |
 | 검증 | Zod (모든 서버 액션 입력) | |
@@ -24,21 +24,23 @@
 
 ### 2.1 요구사항
 
-개인정보(이메일·전화) 없이, 그러나 "누가 썼는지"는 구분되어야 함 → **스페이스 접근코드 + 표시명 + PIN**.
+개인정보(이메일·전화) 없이, 그러나 "누가 썼는지"는 구분되어야 함 → **스페이스 접근코드 + 아이디 + 비밀번호**, 공개 이름은 별도 닉네임.
 
 ### 2.2 흐름
 
 ```
 /join/[slug]
   └ 접근코드 입력 ── 검증(bcrypt) ──▶ join_token 쿠키(10분, 서명)
-        └ 기존 표시명 선택 → PIN 입력 → 검증
-        └ 신규 표시명 입력 → PIN 2회 입력 → members insert
+        └ 아이디 입력
+             ├ 기존 아이디 → 비밀번호 입력 → 검증
+             └ 신규 아이디 → 비밀번호 2회 입력 → 닉네임 설정 → members insert
               └ 세션 발급: HttpOnly, Secure, SameSite=Lax, 30일
                  JWT(jose, HS256) payload: { mid, sid, role, ver }
 ```
 
-- `ver`: 멤버 레코드의 `session_version`. PIN 리셋·강제 로그아웃 시 +1 하면 기존 세션 전부 무효화.
-- PIN 시도 제한: `login_attempts` 테이블에 (space_id, display_name) 단위 카운트, 10분 내 5회 초과 시 15분 잠금.
+- `ver`: 멤버 레코드의 `session_version`. 비밀번호 변경·강제 로그아웃 시 +1 하면 기존 세션 전부 무효화.
+- 비밀번호 시도 제한: `login_attempts` 테이블에 (space_id, login_id) 단위 카운트, 10분 내 5회 초과 시 15분 잠금.
+- 관리자는 회원 비밀번호를 임시값 `0000`으로 초기화할 수 있다. 이때도 `session_version`을 올리고, 사용자는 로그인 후 8자 이상의 비밀번호로 직접 변경한다.
 - 관리자 승격은 DB에서 직접 또는 최초 생성자 자동 admin.
 
 ### 2.3 데이터 접근 경계
@@ -74,21 +76,24 @@ create table spaces (
   created_at        timestamptz not null default now()
 );
 
--- 멤버 (개인정보 없음: 표시명 + PIN 해시)
+-- 멤버 (개인정보 없음: 로그인 아이디 + 비밀번호 해시 + 닉네임)
 create table members (
   id               uuid primary key default gen_random_uuid(),
   space_id         uuid not null references spaces(id) on delete cascade,
+  login_id         text not null,
   display_name     text not null,
-  pin_hash         text not null,
+  password_hash    text not null,
   role             text not null default 'member' check (role in ('admin','member')),
   color            text not null default 'slate',
   session_version  int  not null default 1,
   is_active        boolean not null default true,
-  must_reset_pin   boolean not null default false,
   last_login_at    timestamptz,
-  created_at       timestamptz not null default now(),
-  unique (space_id, display_name)
+  created_at       timestamptz not null default now()
 );
+create unique index members_active_login_id_idx
+  on members (space_id, login_id) where is_active;
+create unique index members_active_display_name_idx
+  on members (space_id, display_name) where is_active;
 
 -- 이벤트(약속 → 모임 → 기록, 하나의 개체가 상태만 바꾼다)
 create table events (
@@ -194,11 +199,11 @@ create table event_tags (
 -- 로그인 시도 제한
 create table login_attempts (
   space_id     uuid not null references spaces(id) on delete cascade,
-  display_name text not null,
+  login_id     text not null,
   fail_count   int not null default 0,
   locked_until timestamptz,
   updated_at   timestamptz not null default now(),
-  primary key (space_id, display_name)
+  primary key (space_id, login_id)
 );
 
 -- 활동 로그(감사/피드)
@@ -291,7 +296,7 @@ NEXT_PUBLIC_SITE_URL=
 ## 8. 개발 순서 (구현 체크리스트)
 
 1. `create-next-app` + Tailwind + shadcn/ui, Vercel 연결, Supabase 프로젝트 2개(dev/prod)
-2. 마이그레이션 1: spaces/members/login_attempts → PIN 로그인 + 세션 + 가드 헬퍼
+2. 마이그레이션 1: spaces/members/login_attempts → 아이디·비밀번호 로그인 + 세션 + 가드 헬퍼
 3. **AvailabilityGrid 프로토타입 단독 페이지**(더미 데이터, 실기기 터치 검증) ← 리스크 선제거
 4. 마이그레이션 2: events/availabilities/participations → 생성 위저드, 응답 저장, 히트맵
 5. 추천 계산 + 확정 플로우 + .ics

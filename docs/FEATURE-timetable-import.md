@@ -40,7 +40,7 @@
 
 | 방식 | 정확도 | 개발 | 외부 전송 | 유지보수 |
 |---|---|---|---|---|
-| **A. VLM (Claude vision + Structured Outputs)** | 높음 (레이아웃 변형·다크모드·해상도에 강함) | **0.5~1일** | 있음 (이미지가 Anthropic API로 나감) | 거의 없음 |
+| **A. VLM (Codex vision + Structured Outputs)** | 높음 (레이아웃 변형·다크모드·해상도에 강함) | **0.5~1일** | 있음 (이미지가 OpenAI로 나감) | 거의 없음 |
 | B. 로컬 CV (격자·색블록 검출 + 축 OCR) | 중간 (에브리타임 UI 변경·크롭·회전에 취약) | 3~5일 | **없음** | 높음 (앱 업데이트마다 깨짐) |
 | C. 에브리타임 계정/공유링크 파싱 | — | — | — | **채택 불가** |
 
@@ -59,7 +59,7 @@
  파일 선택 → 미리보기 → (선택)상단 크롭 → canvas 리사이즈(장변 ≤2000px, jpeg q0.9)
       ↓ base64 (서버 액션 인자)
 [서버 액션 — 이미지는 메모리에만 존재, Storage 저장 안 함]
- requireMember() → Anthropic API 호출(Structured Outputs) → 후처리 검증
+ requireMember() → Codex SDK 호출(ChatGPT 구독 + Structured Outputs) → 후처리 검증
       ↓ 블록 배열 반환 (이미지는 즉시 폐기)
 [클라이언트]
  격자 위 미리보기 오버레이 → 수정 → [적용] → member_schedule_blocks 저장
@@ -71,9 +71,8 @@
 // actions/schedule-import.ts
 "use server";
 
-import Anthropic from "@anthropic-ai/sdk";
+import { Codex } from "@openai/codex-sdk";
 import { z } from "zod";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { requireMember } from "@/lib/auth/guard";
 
 const BlockSchema = z.object({
@@ -88,6 +87,7 @@ const ResultSchema = z.object({
   note: z.string(),                             // 판단 근거 / 문제점 한 줄
   blocks: z.array(BlockSchema),
 });
+const ResultJsonSchema = z.toJSONSchema(ResultSchema);
 
 const SYSTEM = `당신은 한국 대학교 시간표 스크린샷에서 수업 블록을 추출합니다.
 
@@ -99,30 +99,25 @@ const SYSTEM = `당신은 한국 대학교 시간표 스크린샷에서 수업 �
 - 시간표가 아닌 이미지면 detected를 false로 하고 blocks는 비웁니다.
 - 시각은 15분 단위로 반올림합니다. 종료 시각은 블록의 아래 경계입니다(다음 블록 시작과 같을 수 있음).`;
 
-export async function importTimetable(imageBase64: string, mediaType: "image/jpeg" | "image/png") {
+export async function importTimetable(imagePath: string) {
   await requireMember();
 
-  const client = new Anthropic();
-  const res = await client.messages.parse({
-    model: "claude-opus-5",
-    max_tokens: 8000,
-    system: SYSTEM,
-    messages: [{
-      role: "user",
-      content: [
-        { type: "image", source: { type: "base64", media_type: mediaType, data: imageBase64 } },
-        { type: "text", text: "이 시간표의 모든 수업 블록을 추출하세요." },
-      ],
-    }],
-    output_config: {
-      format: zodOutputFormat(ResultSchema),
-      effort: "medium",
-    },
+  const codex = new Codex({
+    // 실제 구현은 API 키 환경변수도 제거해 유료 API 인증 전환을 차단한다.
+    config: { forced_login_method: "chatgpt" },
   });
+  const thread = codex.startThread({
+    model: "gpt-5.6-sol",
+    sandboxMode: "read-only",
+    approvalPolicy: "never",
+  });
+  const res = await thread.run([
+    { type: "text", text: SYSTEM },
+    { type: "local_image", path: imagePath },
+  ], { outputSchema: ResultJsonSchema });
 
-  if (res.stop_reason === "refusal") return { ok: false as const, reason: "refused" };
-  const parsed = res.parsed_output;
-  if (!parsed?.detected) return { ok: false as const, reason: "not_a_timetable", note: parsed?.note };
+  const parsed = ResultSchema.parse(JSON.parse(res.finalResponse));
+  if (!parsed.detected) return { ok: false as const, reason: "not_a_timetable", note: parsed.note };
 
   return { ok: true as const, blocks: validate(parsed.blocks) };
 }
@@ -139,16 +134,16 @@ export async function importTimetable(imageBase64: string, mediaType: "image/jpe
 
 | 항목 | 값 |
 |---|---|
-| 이미지 토큰 | Claude Opus 5는 장변 2576px까지 고해상도 입력, 이미지당 최대 ~4,784 토큰 |
-| 요청당 비용 | 입력 ~5k 토큰 × $5/1M + 출력 ~1k × $25/1M ≈ **$0.05 (약 70원)** |
-| 실사용 빈도 | 멤버당 학기 1회 → 30명 스페이스 기준 **학기당 2천원 수준** |
-| 지연 | 2~5초 (업로드 중 스켈레톤 + "시간표 읽는 중" 표시) |
+| 인증 | 이 머신의 `codex login` ChatGPT 구독 세션 |
+| 과금 | **별도 API 과금 없음**. ChatGPT 플랜의 Codex 사용 한도 차감 |
+| 실사용 빈도 | 멤버당 학기 1회라 구독 한도 내 사용에 적합 |
+| 지연 | 수 초~수십 초 (업로드 중 스켈레톤 + "시간표 읽는 중" 표시) |
 
 이미지는 **장변 2000px 정도로 리사이즈**해서 보낸다. 너무 줄이면 작은 글씨와 블록 경계가 뭉개져 정확도가 떨어지고, 원본 그대로면 토큰만 낭비된다.
 
 ### 4.4 rate limit
 
-이미지 업로드는 비용이 발생하므로 **멤버당 1일 10회** 제한. 초과 시 "직접 입력" 유도.
+이미지 업로드는 구독 사용량을 소모하므로 **멤버당 1일 10회** 제한. 초과 시 "직접 입력" 유도.
 
 ## 5. 데이터 모델 추가
 
@@ -183,13 +178,13 @@ create index on member_schedule_blocks (schedule_id, weekday);
 
 ## 6. 프라이버시 처리 (이 기능의 유일한 원칙 충돌 지점)
 
-이 서비스는 "개인정보 미수집"이 원칙인데, 시간표 스크린샷에는 **학교명·이름·학번·소속**이 찍혀 있을 수 있고, 방식 A는 그 이미지를 **외부(Anthropic API)로 전송**한다. 이건 조용히 넘어갈 수 없는 지점이므로 아래를 함께 구현한다.
+이 서비스는 "개인정보 미수집"이 원칙인데, 시간표 스크린샷에는 **학교명·이름·학번·소속**이 찍혀 있을 수 있고, 방식 A는 그 이미지를 **외부(OpenAI Codex)로 전송**한다. 이건 조용히 넘어갈 수 없는 지점이므로 아래를 함께 구현한다.
 
 1. **업로드 화면에 명시**: "시간표 인식을 위해 이미지가 외부 AI 서비스로 전송됩니다. 이미지는 저장되지 않고 인식 후 즉시 폐기됩니다." + 명시적 동의 체크박스(최초 1회).
 2. **상단 크롭 기본 제공**: 이름/학교가 표시되는 상단 영역을 잘라내도록 크롭 UI를 기본 단계로 넣는다(격자만 남기면 인식에는 지장 없음).
 3. **저장 금지**: Supabase Storage에 올리지 않는다. 서버 액션 메모리에서만 다루고 응답 후 참조 해제. 로그에 base64를 남기지 않는다(에러 로깅 시 이미지 필드 마스킹).
 4. **대안 제공**: 동의하지 않는 사용자를 위해 "직접 입력"(격자에 드래그로 수업 시간 표시) 경로를 항상 동등하게 노출한다. 이미지 업로드는 어디까지나 단축키다.
-5. 배포 전 Anthropic API의 데이터 취급·보존 정책을 직접 확인하고, 필요하면 조직 설정에서 보존 옵션을 검토한다.
+5. 배포 전 ChatGPT/Codex의 데이터 취급·보존 정책을 직접 확인하고, 필요하면 워크스페이스 설정을 검토한다.
 
 ## 7. 이벤트 조율 화면과의 통합
 

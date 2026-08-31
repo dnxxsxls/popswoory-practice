@@ -104,16 +104,6 @@ input[type="number"]::-webkit-inner-spin-button {
   margin: 0;
 }
 
-/*
- * PIN 마스킹.
- * type="password" 를 쓰면 iOS 의 '강력한 암호 사용'이 끼어들어 4자리 칸에
- * 긴 문자열이 들어왔다가 숫자만 남아 한 자리로 깨진다. 그래서 text 로 두고
- * 화면에서만 가린다. (Safari·Chrome 지원, Firefox 는 미지원)
- */
-.pin-mask {
-  -webkit-text-security: disc;
-}
-
 /* 분석 대기 문구가 바뀔 때 살짝 올라오며 나타난다 */
 @keyframes msg-in {
   from {

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { onboardingPath, requireOnboarding } from "@/lib/guard";
+import { requireOnboarding } from "@/lib/guard";
+import { onboardingPath } from "@/lib/onboarding";
 import { getActiveSchedule } from "@/lib/store";
 import { OnboardingRoleGroup } from "@/components/onboarding-role-group";
 

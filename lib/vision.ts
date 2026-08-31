@@ -1,17 +1,16 @@
 import "server-only";
-import fs from "node:fs/promises";
-import { query, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
+import { Codex } from "@openai/codex-sdk";
 import { z } from "zod";
 import { clipToDay } from "./time";
 
 /**
  * 시간표 이미지 → 수업 블록 추출.
  *
- * Claude Agent SDK 를 쓴다. 별도의 API 키 결제 없이, 이 머신에 로그인된
- * 클로드 계정(구독)을 그대로 사용한다. 대신 **앱이 그 로그인이 있는 머신에서
+ * Codex SDK 를 쓴다. 별도의 API 키 결제 없이, 이 머신에 로그인된
+ * ChatGPT 계정(구독)을 그대로 사용한다. 대신 **앱이 그 로그인이 있는 머신에서
  * 돌아야 한다** — Vercel 같은 곳에서는 동작하지 않는다.
  *
- * 에이전트가 Read 툴로 이미지 파일을 직접 열어 보고 JSON 을 돌려준다.
+ * 이미지를 Codex 에 직접 첨부하고 JSON Schema 형식으로 결과를 받는다.
  * 결과는 반드시 사람이 검토·수정한 뒤 저장한다.
  */
 
@@ -29,6 +28,61 @@ const ResultSchema = z.object({
   detected: z.boolean().default(true),
   note: z.string().default(""),
   blocks: z.array(z.unknown()).default([]),
+});
+
+const OUTPUT_SCHEMA = {
+  type: "object",
+  properties: {
+    detected: { type: "boolean" },
+    note: { type: "string" },
+    blocks: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          weekday: { type: "integer", minimum: 0, maximum: 6 },
+          start: { type: "string" },
+          end: { type: "string" },
+          title: { type: "string" },
+          confidence: { type: "string", enum: ["high", "low"] },
+        },
+        required: ["weekday", "start", "end", "title", "confidence"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["detected", "note", "blocks"],
+  additionalProperties: false,
+} as const;
+
+function subscriptionEnvironment(): Record<string, string> {
+  const env: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(process.env)) {
+    // API 키가 설정된 머신에서도 유료 API 인증으로 조용히 전환하지 않는다.
+    if (value !== undefined && key !== "OPENAI_API_KEY" && key !== "CODEX_API_KEY") {
+      env[key] = value;
+    }
+  }
+
+  return env;
+}
+
+const codex = new Codex({
+  env: subscriptionEnvironment(),
+  config: {
+    forced_login_method: "chatgpt",
+    project_doc_max_bytes: 0,
+    features: {
+      apps: false,
+      multi_agent: false,
+      remote_plugin: false,
+      shell_tool: false,
+    },
+    agents: { enabled: false },
+    history: { persistence: "none" },
+    memories: { generate_memories: false, use_memories: false },
+  },
 });
 
 const SYSTEM = `당신은 한국 대학교 시간표 이미지(에브리타임 등)에서 수업 블록을 추출하는 도구입니다.
@@ -146,60 +200,37 @@ export async function analyzeTimetableImage(imagePath: string): Promise<VisionRe
   let text = "";
 
   try {
-    const jpeg = await fs.readFile(imagePath);
-
-    // 이미지를 프롬프트에 직접 넣는다 — Read 툴을 쓰면 왕복이 한 번 더 생겨 느리다
-    async function* prompt(): AsyncGenerator<SDKUserMessage> {
-      yield {
-        type: "user",
-        parent_tool_use_id: null,
-        session_id: "",
-        message: {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: { type: "base64", media_type: "image/jpeg", data: jpeg.toString("base64") },
-            },
-            { type: "text", text: "이 시간표의 수업 블록을 추출해 JSON 으로만 답하세요." },
-          ],
-        },
-      } as SDKUserMessage;
-    }
-
-    const response = query({
-      prompt: prompt(),
-      options: {
-        systemPrompt: SYSTEM,
-        model: "opus", // 정확도 우선 (sonnet 대비 느리지만 판독이 안정적)
-        allowedTools: [], // 툴이 필요 없다
-        thinking: { type: "disabled" },
-        permissionMode: "bypassPermissions",
-        settingSources: [], // 사용자의 CLAUDE.md / settings 를 끌어오지 않는다
-        maxTurns: 1,
-      },
+    const thread = codex.startThread({
+      model: "gpt-5.6-sol",
+      modelReasoningEffort: "medium",
+      sandboxMode: "read-only",
+      approvalPolicy: "never",
+      networkAccessEnabled: false,
+      webSearchMode: "disabled",
+      workingDirectory: process.cwd(),
+      skipGitRepoCheck: true,
     });
 
-    for await (const message of response) {
-      if (message.type === "result") {
-        if (message.subtype !== "success") {
-          return {
-            ok: false,
-            reason: "failed",
-            message: "분석을 끝내지 못했어요. 다시 시도하거나 직접 입력해 주세요.",
-          };
-        }
-        text = message.result;
-      }
-    }
+    const response = await thread.run(
+      [
+        {
+          type: "text",
+          text: `${SYSTEM}\n\n첨부된 시간표 이미지만 판독하세요. 파일·셸·웹 도구를 사용하지 말고 수업 블록을 추출하세요.`,
+        },
+        { type: "local_image", path: imagePath },
+      ],
+      { outputSchema: OUTPUT_SCHEMA },
+    );
+
+    text = response.finalResponse;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    const notLoggedIn = /auth|login|credential|unauthor/i.test(msg);
+    const notLoggedIn = /auth|login|credential|unauthor|chatgpt/i.test(msg);
     return {
       ok: false,
       reason: notLoggedIn ? "not_logged_in" : "failed",
       message: notLoggedIn
-        ? "이 서버에 클로드 계정 로그인이 없어요. 터미널에서 `npm run claude:login` 을 실행해 로그인한 뒤 다시 시도해 주세요."
+        ? "이 서버에 ChatGPT 구독 로그인이 없어요. 터미널에서 `npm run codex:login` 을 실행해 로그인한 뒤 다시 시도해 주세요."
         : `분석에 실패했어요: ${msg}`,
     };
   }

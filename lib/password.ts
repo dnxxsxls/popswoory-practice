@@ -10,16 +10,16 @@ const scryptAsync = promisify(scrypt) as (
 
 const KEYLEN = 64;
 
-export async function hashPin(pin: string): Promise<string> {
+export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString("hex");
-  const key = await scryptAsync(pin, salt, KEYLEN);
+  const key = await scryptAsync(password, salt, KEYLEN);
   return `scrypt$${salt}$${key.toString("hex")}`;
 }
 
-export async function verifyPin(pin: string, stored: string): Promise<boolean> {
+export async function verifyPassword(password: string, stored: string): Promise<boolean> {
   const [scheme, salt, hex] = stored.split("$");
   if (scheme !== "scrypt" || !salt || !hex) return false;
-  const key = await scryptAsync(pin, salt, KEYLEN);
+  const key = await scryptAsync(password, salt, KEYLEN);
   const expected = Buffer.from(hex, "hex");
   if (expected.length !== key.length) return false;
   return timingSafeEqual(key, expected);

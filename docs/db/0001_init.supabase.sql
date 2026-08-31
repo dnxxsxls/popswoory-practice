@@ -16,21 +16,25 @@ insert into spaces (id, slug, name)
 values ('00000000-0000-4000-8000-000000000001', 'default', '우리 모임')
 on conflict (id) do nothing;
 
--- ── 멤버 (개인정보 없음: 표시명 + PIN 해시) ──────────────────
+-- ── 멤버 (개인정보 없음: 로그인 아이디 + 비밀번호 해시 + 닉네임) ──
 create table if not exists members (
   id              uuid primary key default gen_random_uuid(),
   space_id        uuid not null references spaces(id) on delete cascade,
+  login_id        text not null,
   display_name    text not null,
-  pin_hash        text not null,
+  password_hash   text not null,
   role            text not null default 'member' check (role in ('admin','member')),
   color           text not null default 'indigo',
   session_version int  not null default 1,
   is_active       boolean not null default true,
   last_login_at   timestamptz,
-  created_at      timestamptz not null default now(),
-  unique (space_id, display_name)
+  created_at      timestamptz not null default now()
 );
 create index if not exists members_space_idx on members (space_id, is_active);
+create unique index if not exists members_active_login_id_idx
+  on members (space_id, login_id) where is_active;
+create unique index if not exists members_active_display_name_idx
+  on members (space_id, display_name) where is_active;
 
 -- ── 고정 일정(학기 시간표) — 가입 시 1회 등록, 계정에 계속 남는다 ──
 create table if not exists member_schedules (
@@ -62,14 +66,14 @@ create table if not exists member_schedule_blocks (
 );
 create index if not exists schedule_blocks_idx on member_schedule_blocks (schedule_id, weekday);
 
--- ── PIN 무차별 대입 방지 ────────────────────────────────────
+-- ── 비밀번호 무차별 대입 방지 ────────────────────────────────
 create table if not exists login_attempts (
   space_id     uuid not null references spaces(id) on delete cascade,
-  display_name text not null,
+  login_id     text not null,
   fail_count   int not null default 0,
   locked_until timestamptz,
   updated_at   timestamptz not null default now(),
-  primary key (space_id, display_name)
+  primary key (space_id, login_id)
 );
 
 -- ── RLS: 전면 차단 (service role만 통과) ────────────────────

@@ -1,14 +1,17 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
-import { checkName, signIn, signUp } from "@/actions/auth";
+import { useEffect, useState, useTransition } from "react";
+import { checkLoginId, checkNickname, signIn, signUp } from "@/actions/auth";
 import { randomNickname } from "@/lib/nickname";
 import { ErrorText, EyeIcon } from "./ui";
 
-type Step = { kind: "name" } | { kind: "login"; name: string } | { kind: "create"; name: string };
+type Step =
+  | { kind: "login-id" }
+  | { kind: "login"; loginId: string }
+  | { kind: "create-password"; loginId: string }
+  | { kind: "nickname"; loginId: string };
 
-/** 큰 제목 + 회색 부제목 */
 function Heading({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div>
@@ -18,7 +21,6 @@ function Heading({ title, subtitle }: { title: string; subtitle: string }) {
   );
 }
 
-/** 라벨 + 밑줄 입력칸 */
 function UnderlineField({
   label,
   suffix,
@@ -44,7 +46,6 @@ function UnderlineField({
   );
 }
 
-/** 닉네임이 규칙에 맞는지(체크) 아닌지(엑스) 한 글자로 알려주는 아이콘. */
 function StatusIcon({ ok }: { ok: boolean }) {
   return (
     <svg
@@ -63,7 +64,8 @@ function StatusIcon({ ok }: { ok: boolean }) {
   );
 }
 
-/** actions/auth.ts 의 nameSchema 와 같은 규칙 — 화면에서 미리 알려주기 위한 것이다. */
+const LOGIN_ID_MIN = 4;
+const LOGIN_ID_MAX = 20;
 const NAME_MAX = 9;
 const NAME_RULE = /^[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9 ]*$/;
 
@@ -73,125 +75,212 @@ const inputClass =
 export function JoinForm() {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [step, setStep] = useState<Step>({ kind: "name" });
-  const [name, setName] = useState("");
-  const [pin, setPin] = useState("");
-  const [pin2, setPin2] = useState("");
+  const [step, setStep] = useState<Step>({ kind: "login-id" });
+  const [loginId, setLoginId] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [nickname, setNickname] = useState("");
   const [error, setError] = useState("");
-  const [showPin, setShowPin] = useState(false);
-  /** 서버에 물어본 중복 결과. 어느 이름에 대한 답인지 같이 들고 있어야 늦게 온 답을 버릴 수 있다. */
-  const [checked, setChecked] = useState<{ name: string; exists: boolean } | null>(null);
-  const pinRef = useRef<HTMLInputElement>(null);
-  const pin2Ref = useRef<HTMLInputElement>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [checkedNickname, setCheckedNickname] = useState<{
+    name: string;
+    available: boolean;
+  } | null>(null);
 
-  /**
-   * WebKit 은 -webkit-text-security 가 바뀌어도 이미 그려둔 글자를 갱신하지 않는다.
-   * 그래서 마지막에 친 글자만 반대로 보이는(***4 → 123*) 현상이 생긴다.
-   * 값을 다시 넣어 강제로 다시 그리게 한다. 포커스와 커서는 유지한다.
-   */
-  useEffect(() => {
-    for (const el of [pinRef.current, pin2Ref.current]) {
-      if (!el || !el.value) continue;
-      const value = el.value;
-      const focused = document.activeElement === el;
-      el.value = "";
-      el.value = value;
-      if (focused) el.setSelectionRange(value.length, value.length);
-    }
-  }, [showPin]);
+  const normalizedLoginId = loginId.trim().toLowerCase();
 
-  // 규칙은 렌더 중에 바로 판정한다 — 상태로 둘 이유가 없다.
-  const trimmed = name.trim();
-  const ruleError =
-    trimmed.length === 0
+  const trimmedNickname = nickname.trim();
+  const nicknameRuleError =
+    trimmedNickname.length === 0
       ? null
-      : !NAME_RULE.test(trimmed)
+      : !NAME_RULE.test(trimmedNickname)
         ? "한글·영문·숫자와 띄어쓰기만 쓸 수 있어요."
-        : trimmed.length > NAME_MAX
+        : trimmedNickname.length > NAME_MAX
           ? `${NAME_MAX}자까지 쓸 수 있어요.`
           : null;
 
-  // 중복만 서버에 묻는다. 글자를 치는 동안마다 부르지 않고 잠깐 멈추면 확인한다.
   useEffect(() => {
-    if (trimmed.length === 0 || ruleError) return;
+    if (step.kind !== "nickname" || trimmedNickname.length === 0 || nicknameRuleError) return;
+
     const timer = setTimeout(async () => {
-      const res = await checkName(trimmed);
-      setChecked({ name: trimmed, exists: res.ok ? res.exists : false });
+      const result = await checkNickname(trimmedNickname);
+      setCheckedNickname({
+        name: trimmedNickname,
+        available: result.ok && result.available,
+      });
     }, 400);
     return () => clearTimeout(timer);
-  }, [trimmed, ruleError]);
+  }, [step.kind, trimmedNickname, nicknameRuleError]);
 
-  /** 지금 이름에 대한 답이 와 있는지. 없으면 아직 확인 중이다. */
-  const takenKnown = checked && checked.name === trimmed ? checked.exists : null;
-
-  const nameState:
-    { kind: "empty" | "checking" | "taken" | "ok" } | { kind: "invalid"; message: string } =
-    trimmed.length === 0
+  const nicknameAvailable =
+    checkedNickname?.name === trimmedNickname ? checkedNickname.available : null;
+  const nicknameState:
+    | { kind: "empty" | "checking" | "taken" | "ok" }
+    | { kind: "invalid"; message: string } =
+    trimmedNickname.length === 0
       ? { kind: "empty" }
-      : ruleError
-        ? { kind: "invalid", message: ruleError }
-        : takenKnown === null
+      : nicknameRuleError
+        ? { kind: "invalid", message: nicknameRuleError }
+        : nicknameAvailable === null
           ? { kind: "checking" }
-          : takenKnown
-            ? { kind: "taken" }
-            : { kind: "ok" };
+          : nicknameAvailable
+            ? { kind: "ok" }
+            : { kind: "taken" };
 
-  function submitName(e: React.FormEvent) {
-    e.preventDefault();
+  function submitLoginId() {
     setError("");
     start(async () => {
-      const res = await checkName(name);
-      if (!res.ok) return setError(res.error);
-      setPin("");
-      setPin2("");
-      setStep(res.exists ? { kind: "login", name: res.name } : { kind: "create", name: res.name });
+      const result = await checkLoginId(loginId);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      setLoginId(result.loginId);
+      setPassword("");
+      setPasswordConfirm("");
+      setShowPassword(false);
+      setStep(
+        result.exists
+          ? { kind: "login", loginId: result.loginId }
+          : { kind: "create-password", loginId: result.loginId },
+      );
     });
   }
 
-  function submitPin(e: React.FormEvent) {
-    e.preventDefault();
+  function submitPassword() {
+    if (step.kind !== "login" && step.kind !== "create-password") return;
     setError("");
-    if (step.kind === "name") return;
 
-    if (step.kind === "create" && pin !== pin2) {
-      setError("PIN이 서로 달라요.");
+    if (password.length < (step.kind === "login" ? 4 : 8)) {
+      setError(
+        step.kind === "login"
+          ? "비밀번호를 입력해 주세요."
+          : "비밀번호는 8자 이상 입력해 주세요.",
+      );
+      return;
+    }
+
+    if (step.kind === "create-password") {
+      if (password !== passwordConfirm) {
+        setError("비밀번호가 서로 달라요.");
+        return;
+      }
+      if (!nickname) setNickname(randomNickname());
+      setShowPassword(false);
+      setStep({ kind: "nickname", loginId: step.loginId });
       return;
     }
 
     start(async () => {
-      const res =
-        step.kind === "login" ? await signIn(step.name, pin) : await signUp(step.name, pin);
-      if (!res.ok) {
-        setError(res.error);
-        setPin("");
-        setPin2("");
+      const result = await signIn(step.loginId, password);
+      if (!result.ok) {
+        setError(result.error);
+        setPassword("");
         return;
       }
-      router.replace(res.next);
+      router.replace(result.next);
       router.refresh();
     });
   }
 
-  const isName = step.kind === "name";
+  function submitNickname() {
+    if (step.kind !== "nickname") return;
+    setError("");
+    start(async () => {
+      const result = await signUp(
+        step.loginId,
+        password,
+        passwordConfirm,
+        trimmedNickname,
+      );
+      if (!result.ok) {
+        if (result.field === "loginId") {
+          setPassword("");
+          setPasswordConfirm("");
+          setStep({ kind: "login-id" });
+        } else if (result.field === "nickname") {
+          setCheckedNickname({ name: trimmedNickname, available: false });
+        }
+        setError(result.error);
+        return;
+      }
+      router.replace(result.next);
+      router.refresh();
+    });
+  }
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (step.kind === "login-id") submitLoginId();
+    else if (step.kind === "nickname") submitNickname();
+    else submitPassword();
+  }
+
+  function goBack() {
+    setError("");
+    if (step.kind === "nickname") {
+      setStep({ kind: "create-password", loginId: step.loginId });
+      return;
+    }
+    setPassword("");
+    setPasswordConfirm("");
+    setStep({ kind: "login-id" });
+  }
+
+  const isLoginId = step.kind === "login-id";
   const isLogin = step.kind === "login";
+  const isCreatePassword = step.kind === "create-password";
+  const isNickname = step.kind === "nickname";
+  const passwordsMatch = passwordConfirm.length > 0 && password === passwordConfirm;
 
-  const canSubmit = isName
-    ? name.trim().length > 0
-    : pin.length === 4 && (isLogin || pin2.length === 4);
+  const canSubmit = isLoginId
+    ? normalizedLoginId.length > 0
+    : isLogin
+      ? password.length >= 4
+      : isCreatePassword
+        ? password.length >= 8 && passwordConfirm.length >= 8 && passwordsMatch
+        : nicknameState.kind === "ok";
 
-  const cta = isName ? "다음" : isLogin ? "로그인" : "시작하기";
+  const cta = isLoginId ? "다음" : isLogin ? "로그인" : isCreatePassword ? "다음" : "시작하기";
 
   return (
     <form
-      autoComplete="off"
-      onSubmit={isName ? submitName : submitPin}
+      onSubmit={submit}
       className="mx-auto flex min-h-dvh max-w-md flex-col px-6 pt-[calc(env(safe-area-inset-top)+4.5rem)]"
     >
-      {isName ? (
+      {isLoginId ? (
         <>
           <Heading
-            title={"사용하실 닉네임을\n입력해주세요"}
-            subtitle="모임에서 서로 알아볼 수 있는 이름이면 돼요."
+            title={"아이디를\n입력해주세요"}
+            subtitle="가입한 아이디가 있으면 바로 로그인할 수 있어요."
+          />
+          <div className="mt-10">
+            <UnderlineField label="아이디">
+              <input
+                autoFocus
+                name="login-id"
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                value={loginId}
+                onChange={(e) => setLoginId(e.target.value.toLowerCase())}
+                placeholder="bandmate24"
+                maxLength={LOGIN_ID_MAX}
+                className={inputClass}
+              />
+            </UnderlineField>
+            <p className="mt-3 text-[13px] leading-relaxed text-muted">
+              신규 아이디는 영문 소문자와 숫자, {LOGIN_ID_MIN}~{LOGIN_ID_MAX}자로 입력해 주세요.
+            </p>
+          </div>
+        </>
+      ) : isNickname ? (
+        <>
+          <Heading
+            title={"사용하실 닉네임을\n정해주세요"}
+            subtitle="모임에서 다른 사람에게 보여줄 이름이에요."
           />
           <div className="mt-10">
             <UnderlineField
@@ -199,19 +288,19 @@ export function JoinForm() {
               action={
                 <button
                   type="button"
-                  onClick={() => setName((prev) => randomNickname(prev))}
+                  onClick={() => setNickname((previous) => randomNickname(previous))}
                   className="text-[13px] font-semibold text-accent"
                 >
                   랜덤 추천
                 </button>
               }
               suffix={
-                nameState.kind === "ok" ? (
+                nicknameState.kind === "ok" ? (
                   <span className="text-accent">
                     <StatusIcon ok />
                   </span>
-                ) : nameState.kind === "invalid" || nameState.kind === "taken" ? (
-                  <span className={nameState.kind === "invalid" ? "text-danger" : "text-muted"}>
+                ) : nicknameState.kind === "invalid" || nicknameState.kind === "taken" ? (
+                  <span className={nicknameState.kind === "invalid" ? "text-danger" : "text-muted"}>
                     <StatusIcon ok={false} />
                   </span>
                 ) : null
@@ -219,10 +308,12 @@ export function JoinForm() {
             >
               <input
                 autoFocus
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                name="nickname"
+                autoComplete="nickname"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
                 placeholder="통통튀는 베이스"
-                maxLength={9}
+                maxLength={NAME_MAX}
                 className={inputClass}
               />
             </UnderlineField>
@@ -230,27 +321,29 @@ export function JoinForm() {
             <div className="mt-3 flex items-start justify-between gap-3">
               <p
                 className={`text-[13px] leading-relaxed ${
-                  nameState.kind === "invalid"
+                  nicknameState.kind === "invalid" || nicknameState.kind === "taken"
                     ? "font-bold text-danger"
-                    : nameState.kind === "taken"
-                      ? "font-bold text-fg-2"
+                    : nicknameState.kind === "ok"
+                      ? "font-bold text-accent"
                       : "text-muted"
                 }`}
               >
-                {nameState.kind === "invalid"
-                  ? nameState.message
-                  : nameState.kind === "taken"
-                    ? "이미 있는 이름이에요. 다음을 누르면 로그인해요."
-                    : nameState.kind === "ok"
+                {nicknameState.kind === "invalid"
+                  ? nicknameState.message
+                  : nicknameState.kind === "taken"
+                    ? "이미 등록된 닉네임이에요."
+                    : nicknameState.kind === "ok"
                       ? "쓸 수 있는 닉네임이에요."
-                      : `한글·영문·숫자와 띄어쓰기, ${NAME_MAX}자까지 쓸 수 있어요.`}
+                      : nicknameState.kind === "checking"
+                        ? "닉네임을 확인하고 있어요."
+                        : `한글·영문·숫자와 띄어쓰기, ${NAME_MAX}자까지 쓸 수 있어요.`}
               </p>
               <span
                 className={`shrink-0 text-[13px] font-bold tabular-nums ${
-                  name.length >= NAME_MAX ? "text-accent" : "text-muted"
+                  nickname.length >= NAME_MAX ? "text-accent" : "text-muted"
                 }`}
               >
-                {name.length} / {NAME_MAX}
+                {nickname.length} / {NAME_MAX}
               </span>
             </div>
           </div>
@@ -258,65 +351,67 @@ export function JoinForm() {
       ) : (
         <>
           <Heading
-            title={isLogin ? "PIN 4자리를\n입력해주세요" : "PIN 4자리를\n만들어주세요"}
+            title={isLogin ? "비밀번호를\n입력해주세요" : "비밀번호를\n만들어주세요"}
             subtitle={
               isLogin
-                ? `${step.name} 님, 다시 오셨네요.`
-                : "다음에 로그인할 때 쓰는 숫자예요. 잊지 마세요."
+                ? `${step.loginId} 계정으로 로그인합니다.`
+                : "8자 이상으로 만들고 한 번 더 확인해 주세요."
             }
           />
 
           <div className="mt-10 space-y-8">
             <UnderlineField
-              label="PIN"
+              label="비밀번호"
               suffix={
                 <button
                   type="button"
-                  onClick={() => setShowPin((v) => !v)}
-                  aria-label={showPin ? "PIN 숨기기" : "PIN 보기"}
-                  aria-pressed={showPin}
-                  className={showPin ? "text-accent" : "text-muted"}
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+                  aria-pressed={showPassword}
+                  className={showPassword ? "text-accent" : "text-muted"}
                 >
-                  <EyeIcon open={showPin} />
+                  <EyeIcon open={showPassword} />
                 </button>
               }
             >
               <input
-                ref={pinRef}
                 autoFocus
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck={false}
-                name="pin-code"
-                maxLength={4}
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                placeholder="••••"
-                className={`${inputClass} tracking-[0.4em] ${showPin ? "" : "pin-mask"}`}
+                type={showPassword ? "text" : "password"}
+                name="password"
+                autoComplete={isLogin ? "current-password" : "new-password"}
+                maxLength={64}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={isLogin ? "비밀번호" : "8자 이상"}
+                className={inputClass}
               />
             </UnderlineField>
 
-            {!isLogin ? (
-              <UnderlineField label="PIN 다시 입력">
-                <input
-                  ref={pin2Ref}
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  autoComplete="off"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  name="pin-code-confirm"
-                  maxLength={4}
-                  value={pin2}
-                  onChange={(e) => setPin2(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                  placeholder="••••"
-                  className={`${inputClass} tracking-[0.4em] ${showPin ? "" : "pin-mask"}`}
-                />
-              </UnderlineField>
+            {isCreatePassword ? (
+              <div>
+                <UnderlineField label="비밀번호 다시 입력">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password-confirm"
+                    autoComplete="new-password"
+                    maxLength={64}
+                    value={passwordConfirm}
+                    onChange={(e) => setPasswordConfirm(e.target.value)}
+                    placeholder="한 번 더 입력"
+                    className={inputClass}
+                  />
+                </UnderlineField>
+                {passwordConfirm ? (
+                  <p
+                    aria-live="polite"
+                    className={`mt-3 text-[13px] font-bold ${
+                      passwordsMatch ? "text-accent" : "text-danger"
+                    }`}
+                  >
+                    {passwordsMatch ? "비밀번호가 일치해요." : "비밀번호가 서로 달라요."}
+                  </p>
+                ) : null}
+              </div>
             ) : null}
           </div>
         </>
@@ -326,20 +421,16 @@ export function JoinForm() {
         <ErrorText>{error}</ErrorText>
       </div>
 
-      {!isName ? (
+      {!isLoginId ? (
         <button
           type="button"
-          onClick={() => {
-            setStep({ kind: "name" });
-            setError("");
-          }}
+          onClick={goBack}
           className="mt-6 self-start text-[14px] font-medium text-muted"
         >
-          닉네임 다시 입력
+          {isNickname ? "비밀번호 다시 입력" : "아이디 다시 입력"}
         </button>
       ) : null}
 
-      {/* 하단 고정 CTA */}
       <div className="fixed inset-x-0 bottom-0 mx-auto max-w-md bg-bg px-6 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-3">
         <button
           type="submit"

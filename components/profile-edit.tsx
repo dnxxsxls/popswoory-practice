@@ -10,7 +10,7 @@ import {
   sortGroupNos,
   type RoleGroupValue,
 } from "./role-group-picker";
-import { PinChangeForm } from "./pin-change-form";
+import { PasswordChangeForm } from "./password-change-form";
 import { Sheet } from "./sheet";
 import { Button, ErrorText, Field, Input } from "./ui";
 
@@ -24,7 +24,7 @@ export function ProfileEdit({ displayName, groupRole, groupNos }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<"profile" | "pin">("profile");
+  const [mode, setMode] = useState<"profile" | "password">("profile");
   const [name, setName] = useState(displayName);
   const [value, setValue] = useState<RoleGroupValue>({
     role: groupRole,
@@ -86,16 +86,16 @@ export function ProfileEdit({ displayName, groupRole, groupNos }: Props) {
       <Sheet
         open={open}
         onClose={() => setOpen(false)}
-        title={mode === "pin" ? "PIN 변경" : "내 정보 수정"}
+        title={mode === "password" ? "비밀번호 변경" : "내 정보 수정"}
       >
-        {mode === "pin" ? (
-          <PinChangeForm onBack={() => setMode("profile")} />
+        {mode === "password" ? (
+          <PasswordChangeForm onBack={() => setMode("profile")} />
         ) : (
           <>
             <div className="mt-5">
               <Field
                 label="닉네임"
-                hint="로그인할 때 쓰는 이름이에요. 바꾸면 다음 로그인부터 새 이름을 입력해야 해요."
+                hint="모임에서 다른 사람에게 보여줄 이름이에요."
               >
                 <div className="flex gap-2">
                   <Input
@@ -129,13 +129,12 @@ export function ProfileEdit({ displayName, groupRole, groupNos }: Props) {
                 </p>
               ) : null}
 
-              {/* PIN 도 로그인에 쓰는 값이라 닉네임 바로 아래에 둔다 */}
               <button
                 type="button"
-                onClick={() => setMode("pin")}
+                onClick={() => setMode("password")}
                 className="mt-4 text-[15px] font-bold text-accent"
               >
-                PIN 변경하기 →
+                비밀번호 변경하기 →
               </button>
             </div>
 

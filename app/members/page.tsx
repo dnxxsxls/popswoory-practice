@@ -4,6 +4,7 @@ import { getMember, listActiveSchedules, listMembers } from "@/lib/store";
 import { AppShell } from "@/components/app-shell";
 import { RosterRow, type RosterMember } from "@/components/group-roster";
 import { GroupTabs, type GroupRoster } from "@/components/group-tabs";
+import { PasswordResetButton } from "@/components/password-reset-button";
 import { ProfileEdit } from "@/components/profile-edit";
 import { Card } from "@/components/ui";
 
@@ -15,7 +16,7 @@ export default async function MembersPage() {
     getMember(me.memberId),
   ]);
 
-  const blocksOf = new Map(schedules.map((s) => [s.memberId, s.blocks]));
+  const schedulesByMember = new Map(schedules.map((s) => [s.memberId, s]));
   const myGroupNos = meRecord?.groupNos ?? [];
 
   const mine: RosterMember | null = meRecord
@@ -23,7 +24,8 @@ export default async function MembersPage() {
         id: meRecord.id,
         displayName: meRecord.displayName,
         mentor: meRecord.groupRole === "mentor",
-        blocks: blocksOf.get(meRecord.id) ?? [],
+        blocks: schedulesByMember.get(meRecord.id)?.blocks ?? [],
+        scheduleConfirmed: schedulesByMember.get(meRecord.id)?.status === "parsed",
       }
     : null;
 
@@ -51,7 +53,8 @@ export default async function MembersPage() {
         id: m.id,
         displayName: m.displayName,
         mentor: m.groupRole === "mentor",
-        blocks: blocksOf.get(m.id) ?? [],
+        blocks: schedulesByMember.get(m.id)?.blocks ?? [],
+        scheduleConfirmed: schedulesByMember.get(m.id)?.status === "parsed",
       })),
   }));
 
@@ -86,6 +89,40 @@ export default async function MembersPage() {
       <p className="px-1 pt-1 text-[13px] leading-relaxed text-muted">
         업로드한 원본 이미지는 본인만 볼 수 있어요. 조원에게는 정리된 수업 시간만 보입니다.
       </p>
+
+      {me.role === "admin" ? (
+        <>
+          <h2 className="px-1 pt-5 text-[17px] font-bold">회원 관리</h2>
+          <Card>
+            {members.some((member) => member.id !== me.memberId) ? (
+              <ul className="divide-y divide-line">
+                {members
+                  .filter((member) => member.id !== me.memberId)
+                  .map((member) => (
+                    <li
+                      key={member.id}
+                      className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[15px] font-bold">{member.displayName}</p>
+                        <p className="truncate text-[13px] text-muted">@{member.loginId}</p>
+                      </div>
+                      <PasswordResetButton
+                        memberId={member.id}
+                        displayName={member.displayName}
+                      />
+                    </li>
+                  ))}
+              </ul>
+            ) : (
+              <p className="text-[15px] text-muted">초기화할 다른 회원이 없어요.</p>
+            )}
+          </Card>
+          <p className="px-1 text-[13px] leading-relaxed text-muted">
+            초기화한 회원에게 임시 비밀번호 0000을 알려주고, 로그인 후 변경하도록 안내해 주세요.
+          </p>
+        </>
+      ) : null}
     </AppShell>
   );
 }

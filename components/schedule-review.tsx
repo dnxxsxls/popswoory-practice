@@ -9,7 +9,7 @@ import { OriginalImage } from "./original-image";
 import { AnalyzingCard } from "./analyzing-card";
 import type { ScheduleBlock } from "@/lib/store";
 import { Sheet } from "./sheet";
-import { Button, ErrorText } from "./ui";
+import { Button } from "./ui";
 
 type Step = "confirm" | "personal" | "final";
 
@@ -33,6 +33,7 @@ export function ScheduleReview({
   onPhaseChange,
   onBackFromFirst,
   showStepLabel = true,
+  initiallyConfirmed = false,
 }: {
   initial: ScheduleBlock[];
   hasImage: boolean;
@@ -42,6 +43,8 @@ export function ScheduleReview({
   onBackFromFirst?: () => void;
   /** 온보딩은 셸이 단계를 표시하므로 자체 라벨을 끈다 */
   showStepLabel?: boolean;
+  /** 확정된 빈 시간표를 수정할 때 이미지 분석을 다시 시작하지 않는다. */
+  initiallyConfirmed?: boolean;
   /**
    * 확정 후 곧바로 이동할 경로. 온보딩처럼 다음 단계가 정해져 있을 때 넘긴다.
    * 없으면 완료 안내를 띄우고 사용자가 고르게 한다.
@@ -50,7 +53,9 @@ export function ScheduleReview({
 }) {
   const router = useRouter();
   const [blocks, setBlocks] = useState<EditBlock[]>(() => toEdit(initial));
-  const [analyzing, setAnalyzing] = useState(initial.length === 0 && hasImage);
+  const [analyzing, setAnalyzing] = useState(
+    !initiallyConfirmed && initial.length === 0 && hasImage,
+  );
   const [step, setStep] = useState<Step>("confirm");
   const [error, setError] = useState("");
   const [saving, startSave] = useTransition();
@@ -280,7 +285,11 @@ export function ScheduleReview({
             </span>
           </div>
 
-          <ErrorText>{blocks.length === 0 ? "시간이 하나도 없어요. 그래도 확정할 수 있어요." : ""}</ErrorText>
+          {blocks.length === 0 ? (
+            <p className="px-1 text-[14px] leading-relaxed text-muted">
+              등록할 시간이 없어도 이대로 확정할 수 있어요.
+            </p>
+          ) : null}
 
           <div className="flex gap-3">
             <Button variant="secondary" className="flex-1" onClick={() => setStep("personal")}>

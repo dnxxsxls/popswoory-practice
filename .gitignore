@@ -42,3 +42,6 @@ next-env.d.ts
 
 # 로컬 데이터 (JSON + 업로드 이미지)
 .data/
+
+# 로컬 코드 지식 그래프
+graphify-out/

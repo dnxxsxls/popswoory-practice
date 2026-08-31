@@ -13,12 +13,12 @@ export default async function FreePage() {
 
   const byMember = new Map(schedules.map((s) => [s.memberId, s]));
   const memberSchedules: MemberSchedule[] = members.map((m) => {
-    const blocks = byMember.get(m.id)?.blocks ?? [];
+    const schedule = byMember.get(m.id);
     return {
       memberId: m.id,
       displayName: m.displayName,
-      blocks,
-      hasSchedule: blocks.length > 0,
+      blocks: schedule?.blocks ?? [],
+      hasSchedule: schedule?.status === "parsed",
     };
   });
 

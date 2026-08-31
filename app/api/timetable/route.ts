@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
-import { readSession } from "@/lib/session";
+import { optionalMember } from "@/lib/guard";
 import { getMember, saveScheduleImage } from "@/lib/store";
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB (크롭·리사이즈 후 기준으로는 충분히 넉넉)
 
 export async function POST(request: Request) {
-  const session = await readSession();
+  const session = await optionalMember();
   if (!session) {
     return NextResponse.json({ error: "로그인이 필요해요." }, { status: 401 });
   }
   const member = await getMember(session.memberId);
-  if (!member || !member.isActive) {
+  if (!member) {
     return NextResponse.json({ error: "로그인이 필요해요." }, { status: 401 });
   }
 

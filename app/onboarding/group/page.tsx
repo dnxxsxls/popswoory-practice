@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { onboardingPath, requireOnboarding } from "@/lib/guard";
+import { requireOnboarding } from "@/lib/guard";
+import { onboardingPath } from "@/lib/onboarding";
 import { getActiveSchedule, listActiveSchedules, listMembers } from "@/lib/store";
 import { OnboardingGroup } from "@/components/onboarding-group";
 
@@ -14,7 +15,7 @@ export default async function OnboardingGroupPage() {
   const here = onboardingPath(member, schedule);
   if (here !== "/onboarding/group") redirect(here);
 
-  const blocksOf = new Map(schedules.map((s) => [s.memberId, s.blocks]));
+  const schedulesByMember = new Map(schedules.map((s) => [s.memberId, s]));
 
   return (
     <OnboardingGroup
@@ -27,7 +28,8 @@ export default async function OnboardingGroupPage() {
             id: m.id,
             displayName: m.displayName,
             mentor: m.groupRole === "mentor",
-            blocks: blocksOf.get(m.id) ?? [],
+            blocks: schedulesByMember.get(m.id)?.blocks ?? [],
+            scheduleConfirmed: schedulesByMember.get(m.id)?.status === "parsed",
           })),
       }))}
     />

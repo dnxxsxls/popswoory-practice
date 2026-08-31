@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireOnboarded } from "@/lib/guard";
-import { getEvent } from "@/lib/store";
+import { canAccessEvent, getEvent, getMember } from "@/lib/store";
 import { buildEventView } from "@/lib/event-view";
 import { formatDate } from "@/lib/candidates";
 import { AppShell } from "@/components/app-shell";
@@ -11,8 +11,10 @@ export default async function EventPage({ params }: PageProps<"/events/[id]">) {
   const me = await requireOnboarded();
   const { id } = await params;
 
-  const event = await getEvent(id);
-  if (!event || event.status === "cancelled") notFound();
+  const [event, member] = await Promise.all([getEvent(id), getMember(me.memberId)]);
+  if (!event || !member || event.status === "cancelled" || !canAccessEvent(member, event)) {
+    notFound();
+  }
 
   const view = await buildEventView(event);
 
@@ -28,21 +30,19 @@ export default async function EventPage({ params }: PageProps<"/events/[id]">) {
 
   const subtitle =
     event.status === "confirmed"
-      ? "확정된 연습 일정"
-      : `${event.dates.map(formatDate).join(", ")} 중에서`;
+      ? `${event.groupNo}조 · 확정된 연습 일정`
+      : `${event.groupNo}조 · ${event.dates.map(formatDate).join(", ")} 중에서`;
 
   return (
     <AppShell title={event.title} subtitle={subtitle}>
       <EventDetail
         eventId={event.id}
-        title={event.title}
         status={event.status}
         isOwner={event.createdBy === me.memberId || me.role === "admin"}
         myId={me.memberId}
         memberCount={view.members.length}
-        respondedCount={view.respondedCount}
+        respondedIds={view.respondedIds}
         relaxed={view.relaxed}
-        missingSchedule={view.missingSchedule}
         names={view.names}
         candidates={view.candidates}
         confirmed={confirmed}

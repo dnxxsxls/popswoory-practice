@@ -23,24 +23,31 @@ export type EventView = {
   names: Record<string, string>;
   candidates: CandidateView[];
   relaxed: boolean;
-  /** 시간표를 등록하지 않아 계산에서 빠진 멤버 이름 */
-  missingSchedule: string[];
-  /** 한 명이라도 답한 멤버 수 */
-  respondedCount: number;
+  respondedIds: string[];
 };
 
 /** 연습 일정 화면에 필요한 것을 한 번에 모아 계산한다. */
 export async function buildEventView(event: MeetEvent): Promise<EventView> {
-  const [members, schedules, responses] = await Promise.all([
+  const [allMembers, schedules, allResponses] = await Promise.all([
     listMembers(),
     listActiveSchedules(),
     listResponses(event.id),
   ]);
+  const members = allMembers.filter(
+    (member) => event.groupNo !== null && member.groupNos.includes(event.groupNo),
+  );
+  const memberIds = new Set(members.map((member) => member.id));
+  const responses = allResponses.filter((response) => memberIds.has(response.memberId));
 
   const byMember = new Map(schedules.map((s) => [s.memberId, s]));
   const memberSchedules: MemberSchedule[] = members.map((m) => {
-    const blocks = byMember.get(m.id)?.blocks ?? [];
-    return { memberId: m.id, displayName: m.displayName, blocks, hasSchedule: blocks.length > 0 };
+    const schedule = byMember.get(m.id);
+    return {
+      memberId: m.id,
+      displayName: m.displayName,
+      blocks: schedule?.blocks ?? [],
+      hasSchedule: schedule?.status === "parsed",
+    };
   });
 
   const table = buildFreeTable(memberSchedules);
@@ -57,13 +64,14 @@ export async function buildEventView(event: MeetEvent): Promise<EventView> {
     };
   });
 
+  const respondedIds = [...new Set(responses.map((r) => r.memberId))];
+
   return {
     event,
     members,
     names: Object.fromEntries(members.map((m) => [m.id, m.displayName])),
     candidates: withAnswers,
     relaxed,
-    missingSchedule: memberSchedules.filter((m) => !m.hasSchedule).map((m) => m.displayName),
-    respondedCount: new Set(responses.map((r) => r.memberId)).size,
+    respondedIds,
   };
 }

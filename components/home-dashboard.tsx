@@ -2,12 +2,13 @@ import Link from "next/link";
 import { formatDate } from "@/lib/candidates";
 import { formatMin } from "@/lib/time";
 /** 내 시간표 준비 상태 — 홈에서 할 일을 정하는 데 쓴다. */
-export type TimetableState = "none" | "uploaded" | "parsed";
+export type TimetableState = "none" | "uploaded" | "manual" | "parsed";
 import { Badge, Card } from "./ui";
 
 /** 확정된 연습 하나. 참석 집계까지 끝난 상태로 받는다. */
 export type UpcomingItem = {
   id: string;
+  groupNo: number;
   title: string;
   /** "YYYY-MM-DD" */
   date: string;
@@ -17,21 +18,23 @@ export type UpcomingItem = {
   goingNames: string[];
   declined: number;
   noReply: number;
+  memberCount: number;
 };
 
 /** 아직 시간을 고르는 중인 연습. */
 export type PollingItem = {
   id: string;
+  groupNo: number;
   title: string;
   dateCount: number;
   /** 내가 답을 냈는지 */
   answered: boolean;
   respondedCount: number;
+  memberCount: number;
 };
 
 type Props = {
   timetable: TimetableState;
-  memberCount: number;
   upcoming: UpcomingItem[];
   polling: PollingItem[];
   /** 시간표를 아직 등록하지 않은 멤버 수 */
@@ -46,7 +49,6 @@ export function homeSubtitle(upcoming: UpcomingItem[], polling: PollingItem[]): 
 
 export function HomeDashboard({
   timetable,
-  memberCount,
   upcoming,
   polling,
   missingCount,
@@ -70,11 +72,15 @@ export function HomeDashboard({
             지금 등록하기 →
           </Link>
         </Card>
-      ) : timetable === "uploaded" ? (
+      ) : timetable === "uploaded" || timetable === "manual" ? (
         <Card className="ring-2 ring-accent">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[17px] font-bold">시간표 이미지만 올린 상태예요</p>
+              <p className="text-[17px] font-bold">
+                {timetable === "manual"
+                  ? "시간표 직접 입력을 마치지 않았어요"
+                  : "시간표 이미지만 올린 상태예요"}
+              </p>
               <p className="mt-1.5 text-[15px] leading-relaxed text-muted">
                 수업 시간을 확인해야 공강 계산에 쓸 수 있어요.
               </p>
@@ -85,7 +91,7 @@ export function HomeDashboard({
             href="/timetable/review"
             className="mt-4 inline-block text-[15px] font-bold text-accent"
           >
-            수업 시간 확인하기 →
+            {timetable === "manual" ? "직접 입력 계속하기 →" : "수업 시간 확인하기 →"}
           </Link>
         </Card>
       ) : null}
@@ -94,7 +100,7 @@ export function HomeDashboard({
       {upcoming.map((e) => (
         <Link key={e.id} href={`/events/${e.id}`} className="block">
           <Card className="ring-2 ring-accent">
-            <Badge tone="accent">다가오는 연습</Badge>
+            <Badge tone="accent">{e.groupNo}조 · 다가오는 연습</Badge>
             <p className="mt-2.5 truncate text-[19px] font-extrabold">{e.title}</p>
 
             <p className="mt-1.5 text-[17px] font-bold text-accent">
@@ -110,7 +116,7 @@ export function HomeDashboard({
               <div className="flex items-baseline justify-between gap-3">
                 <p className="text-[15px] font-bold">오는 사람</p>
                 <p className="text-[15px] font-semibold text-muted">
-                  <span className="text-accent">{e.goingNames.length}</span> / {memberCount}명
+                  <span className="text-accent">{e.goingNames.length}</span> / {e.memberCount}명
                 </p>
               </div>
 
@@ -147,9 +153,10 @@ export function HomeDashboard({
           <Card className={e.answered ? "" : "ring-2 ring-accent"}>
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate text-[17px] font-bold">{e.title}</p>
+                <Badge>{e.groupNo}조</Badge>
+                <p className="mt-2 truncate text-[17px] font-bold">{e.title}</p>
                 <p className="mt-1 text-[15px] text-muted">
-                  후보 {e.dateCount}일 · {e.respondedCount}/{memberCount}명 답함
+                  후보 {e.dateCount}일 · {e.respondedCount}/{e.memberCount}명 답함
                 </p>
               </div>
               <span className="shrink-0 text-[15px] font-bold text-accent">

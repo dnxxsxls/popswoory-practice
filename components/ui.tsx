@@ -107,7 +107,7 @@ export function Badge({
   );
 }
 
-/** PIN 보기/숨기기 토글에 쓰는 눈 아이콘 */
+/** 비밀번호 보기/숨기기 토글에 쓰는 눈 아이콘 */
 export function EyeIcon({ open }: { open: boolean }) {
   return (
     <svg

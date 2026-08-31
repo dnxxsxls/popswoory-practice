@@ -2,18 +2,18 @@
 
 import { z } from "zod";
 import { requireMember } from "@/lib/guard";
-import { hashPin, verifyPin } from "@/lib/pin";
-import { clearFails, isLocked, recordFail } from "@/lib/rate-limit";
+import { hashPassword, verifyPassword } from "@/lib/password";
+import { clearFails, reserveAttempt } from "@/lib/rate-limit";
 import { destroySession } from "@/lib/session";
 import {
-  changeMemberPin,
+  changeMemberPassword,
   findMemberByName,
   getMember,
   renameMember,
   setMemberGroups,
 } from "@/lib/store";
 
-// 가입 화면과 같은 규칙 — 표시명이 곧 로그인 아이디다
+// 가입 화면과 같은 닉네임 규칙
 const NAME_RULE = /^[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9 ]+$/;
 
 const nameSchema = z
@@ -56,28 +56,38 @@ export async function updateProfile(
   return { ok: true };
 }
 
-const pinSchema = z.string().regex(/^\d{4}$/, "PIN은 숫자 4자리예요.");
+const passwordSchema = z
+  .string()
+  .min(8, "비밀번호는 8자 이상 입력해 주세요.")
+  .max(64, "비밀번호는 64자까지 입력할 수 있어요.");
+
+const currentPasswordSchema = z.string().min(4).max(64);
 
 /**
- * PIN 변경. 지금 PIN 을 확인한 뒤 바꾸고, 세션을 끊는다.
+ * 비밀번호 변경. 지금 비밀번호를 확인한 뒤 바꾸고, 세션을 끊는다.
  * 성공하면 화면에서 로그인으로 보낸다.
  */
-export async function changePin(input: {
+export async function changePassword(input: {
   current?: string;
   next?: string;
   confirm?: string;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const me = await requireMember();
 
-  const current = pinSchema.safeParse(input.current);
-  const next = pinSchema.safeParse(input.next);
-  if (!current.success) return { ok: false, error: "지금 PIN을 숫자 4자리로 입력해 주세요." };
-  if (!next.success) return { ok: false, error: "새 PIN은 숫자 4자리예요." };
-  if (next.data !== input.confirm) return { ok: false, error: "새 PIN이 서로 달라요." };
-  if (next.data === current.data) return { ok: false, error: "지금과 다른 PIN으로 바꿔주세요." };
+  const current = currentPasswordSchema.safeParse(input.current);
+  const next = passwordSchema.safeParse(input.next);
+  if (!current.success) return { ok: false, error: "지금 비밀번호를 확인해 주세요." };
+  if (!next.success) return { ok: false, error: next.error.issues[0].message };
+  if (next.data !== input.confirm) return { ok: false, error: "새 비밀번호가 서로 달라요." };
+  if (next.data === current.data) {
+    return { ok: false, error: "지금과 다른 비밀번호로 바꿔주세요." };
+  }
 
-  // 로그인과 같은 잠금 정책을 쓴다 — 세션이 있어도 지금 PIN 을 넘겨짚지 못하게.
-  const lockedFor = isLocked(me.displayName);
+  const member = await getMember(me.memberId);
+  if (!member) return { ok: false, error: "회원 정보를 찾을 수 없어요." };
+
+  // 로그인과 같은 잠금 정책을 쓴다 — 세션이 있어도 지금 비밀번호를 넘겨짚지 못하게.
+  const lockedFor = reserveAttempt(member.loginId);
   if (lockedFor > 0) {
     return {
       ok: false,
@@ -85,14 +95,20 @@ export async function changePin(input: {
     };
   }
 
-  const member = await getMember(me.memberId);
-  if (!member || !(await verifyPin(current.data, member.pinHash))) {
-    recordFail(me.displayName);
-    return { ok: false, error: "지금 PIN이 맞지 않아요." };
+  if (!(await verifyPassword(current.data, member.passwordHash))) {
+    return { ok: false, error: "지금 비밀번호가 맞지 않아요." };
   }
-  clearFails(me.displayName);
+  clearFails(member.loginId);
 
-  await changeMemberPin(me.memberId, await hashPin(next.data));
+  const changed = await changeMemberPassword(
+    me.memberId,
+    member.passwordHash,
+    await hashPassword(next.data),
+  );
+  if (!changed) {
+    await destroySession();
+    return { ok: false, error: "비밀번호가 이미 변경됐어요. 다시 로그인해 주세요." };
+  }
   await destroySession();
   return { ok: true };
 }

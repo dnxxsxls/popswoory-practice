@@ -14,14 +14,14 @@ npm run dev
 데이터는 `.data/` 폴더에 저장된다 (JSON + 업로드 이미지, git 제외).
 `.data/` 를 지우면 완전히 초기화된다.
 
-**시간표 자동 분석을 쓰려면** 이 머신에 클로드 계정 로그인이 필요하다 (API 키 아님):
+**시간표 자동 분석을 쓰려면** 이 머신에 ChatGPT 계정 로그인이 필요하다 (API 키 아님):
 
 ```bash
-npm run claude:login
+npm run codex:login
 ```
 
 ```bash
-npm run claude:status
+npm run codex:status
 ```
 
 로그인이 없어도 앱은 정상 동작하며, 검토 화면에서 "직접 입력"으로 넘어간다.
@@ -30,20 +30,23 @@ npm run claude:status
 
 | 화면 | 경로 | 상태 |
 |---|---|---|
-| 가입 / 로그인 | `/join` | ✅ 이름 + PIN 4자리 → 바로 홈 |
+| 가입 / 로그인 | `/join` | ✅ 아이디 확인 → 비밀번호 → 신규 회원만 닉네임 설정 |
 | 시간표 확인·수정 | `/timetable/review` | ✅ 자동 분석 → 격자 미리보기 → 수정 → 확정 |
 | 홈 | `/` | ✅ 내 등록 상태 + 모임 등록 현황 |
 | 내 시간표 | `/timetable` | ✅ 주간 격자 / 수정 / 새로 올리기 |
 | 우리 공강표 | `/free` | ✅ 전원 겹치는 공강 계산 + 히트맵 |
-| 우리 조 | `/members` | ✅ 내 조 명단 + 내 정보 수정 |
+| 우리 조 | `/members` | ✅ 내 조 명단 + 내 정보 수정 + 관리자 비밀번호 초기화 |
 | 약속 잡기 | — | ⬜ 다음 단계 |
+
+아이디 분리 전에 가입한 회원은 기존 닉네임을 아이디로, 기존 PIN을 비밀번호로 한 번 더 사용할 수 있다.
+로그인 후 닉네임과 비밀번호를 바꿔도 승계된 아이디는 유지된다.
 
 ### 시간표 자동 분석
 
 업로드한 이미지에서 수업 블록(`요일 / 시작 / 종료 / 과목명`)을 추출한다 (`lib/vision.ts`).
 
-**Claude Agent SDK** 를 쓴다. 별도의 API 키 결제 없이 이 머신에 로그인된 클로드 계정(구독)을
-그대로 사용한다. 에이전트가 Read 툴로 이미지 파일을 직접 열어 보고 JSON 을 돌려준다.
+**Codex SDK** 를 쓴다. 별도의 API 키 결제 없이 이 머신에 로그인된 ChatGPT 계정(구독)을
+그대로 사용한다. 이미지를 Codex 에 직접 첨부하고 JSON Schema 형식으로 결과를 받는다.
 
 > ⚠️ **이 방식은 앱이 그 로그인이 있는 머신에서 돌아야 한다.** Vercel 같은 호스팅에서는
 > 동작하지 않는다 — 자동 분석을 쓰려면 맥미니 등에서 상시 구동해야 한다.
@@ -60,7 +63,7 @@ npm run claude:status
 ## 외부에서 접속하기 (자체 호스팅)
 
 유료 서비스 없이 이 머신에서 돌리고 공개 https 주소를 받는다.
-**Vercel 같은 서버리스에는 올릴 수 없다** — 자동 분석이 이 머신의 클로드 로그인을 쓰고,
+**Vercel 같은 서버리스에는 올릴 수 없다** — 자동 분석이 이 머신의 ChatGPT 로그인을 쓰고,
 데이터도 로컬 파일에 저장하기 때문이다.
 
 주소는 **Tailscale Funnel** 로 고정한다.
@@ -117,7 +120,7 @@ launchctl load ~/Library/LaunchAgents/com.popswoory.serve.plist
 ## 원칙
 
 1. 하나의 `Event`가 `polling → confirmed → done` 상태만 바꾸며 끝까지 산다.
-2. 개인정보를 수집하지 않는다 — 식별은 `표시명 + PIN`뿐.
+2. 개인정보를 수집하지 않는다 — 이메일·전화번호 없이 `아이디 + 비밀번호`로 인증하고 닉네임만 공개한다.
 3. 시간표는 가입할 때 한 번만 등록하고, 이후 모든 약속에 자동 반영된다.
 4. 전원 공강 시간대를 자동으로 계산해 후보로 제시한다.
 5. 단, 시간표는 "불가"만 만든다. "가능"은 사람만 만들 수 있다.
@@ -134,7 +137,7 @@ actions/        서버 액션 (인증)
 components/     UI
 lib/
   store.ts      ★ 로컬 파일 저장소 — 나중에 Supabase 로 바꿀 때 이 파일만 교체
-  vision.ts     Claude Agent SDK 로 이미지 분석 (JSON 추출 + 서버 검증)
+  vision.ts     Codex SDK 로 이미지 분석 (구조화 출력 + 서버 검증)
   free-time.ts  전원 공강 계산 (30분 슬롯 교집합)
   session.ts    JWT 세션 쿠키
   guard.ts      requireMember() — 보호 페이지/액션의 첫 줄
@@ -143,7 +146,7 @@ docs/db/        Supabase 전환용 스키마 SQL (아직 미사용)
 
 ## 스택
 
-Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4 · 로컬 파일 저장소 · Claude Agent SDK
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4 · 로컬 파일 저장소 · Codex SDK
 
 ## 규모
 

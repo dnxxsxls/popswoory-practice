@@ -11,11 +11,13 @@ export type RosterMember = {
   displayName: string;
   /** 본인이 튜토리얼에서 고른 역할. 멘토와 조원은 겹치지 않는다. */
   mentor: boolean;
-  /** 분석·검토를 마친 수업 블록. 비어 있으면 아직 등록 전이다. */
+  /** 분석·검토를 마친 수업 블록. 수업이 없는 사람은 비어 있을 수 있다. */
   blocks: GridBlock[];
+  /** 블록이 0개여도 검토를 확정했으면 등록 완료다. */
+  scheduleConfirmed: boolean;
 };
 
-export const isReady = (m: RosterMember) => m.blocks.length > 0;
+export const isReady = (m: RosterMember) => m.scheduleConfirmed;
 
 /**
  * 멘토 먼저, 그다음 조원. 넘겨받은 순서(가입순)를 그대로 두려고

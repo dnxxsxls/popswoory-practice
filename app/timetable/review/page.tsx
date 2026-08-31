@@ -12,7 +12,7 @@ export default async function TimetableReviewPage() {
   if (!schedule) redirect("/timetable");
 
   const hasImage = Boolean(schedule.imageFile);
-  const alreadyConfirmed = schedule.blocks.length > 0;
+  const alreadyConfirmed = schedule.status === "parsed";
 
   return (
     <AppShell
@@ -25,7 +25,11 @@ export default async function TimetableReviewPage() {
             : "빈 칸을 눌러 수업을 넣어주세요"
       }
     >
-      <ScheduleReview initial={schedule.blocks} hasImage={hasImage} />
+      <ScheduleReview
+        initial={schedule.blocks}
+        hasImage={hasImage}
+        initiallyConfirmed={alreadyConfirmed}
+      />
 
       <Link
         href="/timetable"

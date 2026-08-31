@@ -13,8 +13,9 @@ import { DATA_DIR, DB_FILE, UPLOAD_DIR } from "./env";
 
 export type Member = {
   id: string;
+  loginId: string;
   displayName: string;
-  pinHash: string;
+  passwordHash: string;
   role: "admin" | "member";
   color: string;
   sessionVersion: number;
@@ -75,6 +76,8 @@ export type Schedule = {
 export type MeetEvent = {
   id: string;
   createdBy: string;
+  /** 이 연습을 공유하는 조. null 은 조를 알 수 없는 예전 데이터다. */
+  groupNo: number | null;
   title: string;
   status: "polling" | "confirmed" | "cancelled";
   /** 후보 날짜 (KST 기준 "YYYY-MM-DD") */
@@ -86,6 +89,10 @@ export type MeetEvent = {
   place: string | null;
   createdAt: string;
 };
+
+export function canAccessEvent(member: Member, event: MeetEvent): boolean {
+  return event.groupNo !== null && member.groupNos.includes(event.groupNo);
+}
 
 /** 후보 하나에 대한 멤버의 답. slotKey = `${date}T${startMin}` */
 export type EventResponse = {
@@ -108,19 +115,34 @@ async function read(): Promise<Data> {
   try {
     const raw = await fs.readFile(DB_FILE, "utf8");
     const parsed = JSON.parse(raw) as Partial<Data>;
+    const members = (parsed.members ?? []).map((m) => {
+      const legacy = m as Member & {
+        groupNo?: number | null;
+        pinHash?: string;
+      };
+      const { groupNo, pinHash, ...current } = legacy;
+      return {
+        ...current,
+        // 아이디 분리 전 회원은 기존 닉네임과 PIN을 최초 로그인 정보로 승계한다.
+        loginId: current.loginId?.trim().toLowerCase() || current.displayName.trim().toLowerCase(),
+        passwordHash: current.passwordHash || pinHash || "",
+        groupRole: current.groupRole ?? null,
+        groupNos: current.groupNos ?? (typeof groupNo === "number" ? [groupNo] : []),
+        tutorialDoneAt: current.tutorialDoneAt ?? null,
+      };
+    });
+
     return {
-      // 예전 데이터 호환
-      members: (parsed.members ?? []).map((m) => {
-        // 예전 데이터는 조가 하나(groupNo)뿐이고 역할이 없었다.
-        const legacy = (m as { groupNo?: number | null }).groupNo;
+      members,
+      // 조 범위가 없던 이벤트는 생성자의 첫 번째 조로 승계한다.
+      events: (parsed.events ?? []).map((event) => {
+        if (Number.isInteger(event.groupNo) && (event.groupNo ?? 0) > 0) return event;
+        const creator = members.find((member) => member.id === event.createdBy);
         return {
-          ...m,
-          groupRole: m.groupRole ?? null,
-          groupNos: m.groupNos ?? (typeof legacy === "number" ? [legacy] : []),
-          tutorialDoneAt: m.tutorialDoneAt ?? null,
+          ...event,
+          groupNo: creator?.groupNos[0] ?? null,
         };
       }),
-      events: parsed.events ?? [],
       responses: parsed.responses ?? [],
       schedules: (parsed.schedules ?? []).map((s) => ({
         ...s,
@@ -170,6 +192,15 @@ export async function listMembers(): Promise<Member[]> {
 /** 표시명 비교 규칙 — 앞뒤 공백과 대소문자를 무시한다. */
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
+/** 로그인 아이디는 저장·비교할 때 모두 소문자로 정규화한다. */
+const normalizeLoginId = (loginId: string) => loginId.trim().toLowerCase();
+
+export async function findMemberByLoginId(loginId: string): Promise<Member | null> {
+  const data = await read();
+  const normalized = normalizeLoginId(loginId);
+  return data.members.find((m) => m.isActive && m.loginId === normalized) ?? null;
+}
+
 export async function findMemberByName(displayName: string): Promise<Member | null> {
   const data = await read();
   return data.members.find((m) => m.isActive && sameName(m.displayName, displayName)) ?? null;
@@ -180,24 +211,32 @@ export async function getMember(id: string): Promise<Member | null> {
   return data.members.find((m) => m.id === id) ?? null;
 }
 
-/**
- * 표시명이 곧 로그인 아이디다. 확인과 삽입을 잠금 안에서 함께 해야
- * 같은 이름으로 동시에 가입 요청이 들어와도 하나만 통과한다.
- * 이름이 이미 있으면 null.
- */
+export type CreateMemberResult =
+  | { ok: true; member: Member }
+  | { ok: false; field: "loginId" | "displayName" };
+
+/** 아이디·닉네임 중복 확인과 삽입을 한 잠금 안에서 처리한다. */
 export async function createMember(
+  loginId: string,
   displayName: string,
-  pinHash: string,
-): Promise<Member | null> {
+  passwordHash: string,
+): Promise<CreateMemberResult> {
   return withLock(async () => {
     const data = await read();
+    const normalizedLoginId = normalizeLoginId(loginId);
     const name = displayName.trim();
-    if (data.members.some((m) => m.isActive && sameName(m.displayName, name))) return null;
+    if (data.members.some((m) => m.isActive && m.loginId === normalizedLoginId)) {
+      return { ok: false, field: "loginId" };
+    }
+    if (data.members.some((m) => m.isActive && sameName(m.displayName, name))) {
+      return { ok: false, field: "displayName" };
+    }
 
     const member: Member = {
       id: randomUUID(),
+      loginId: normalizedLoginId,
       displayName: name,
-      pinHash,
+      passwordHash,
       role: data.members.length === 0 ? "admin" : "member", // 첫 가입자가 관리자
       color: COLORS[data.members.length % COLORS.length],
       sessionVersion: 1,
@@ -210,7 +249,7 @@ export async function createMember(
     };
     data.members.push(member);
     await write(data);
-    return member;
+    return { ok: true, member };
   });
 }
 
@@ -353,6 +392,7 @@ export async function saveScheduleBlocks(
 
 export async function createEvent(input: {
   createdBy: string;
+  groupNo: number;
   title: string;
   dates: string[];
   durationMin: number;
@@ -362,6 +402,7 @@ export async function createEvent(input: {
     const event: MeetEvent = {
       id: randomUUID(),
       createdBy: input.createdBy,
+      groupNo: input.groupNo,
       title: input.title.trim(),
       status: "polling",
       dates: [...input.dates].sort(),
@@ -377,10 +418,11 @@ export async function createEvent(input: {
   });
 }
 
-export async function listEvents(): Promise<MeetEvent[]> {
+export async function listEvents(groupNos: number[]): Promise<MeetEvent[]> {
   const data = await read();
+  const allowed = new Set(groupNos);
   return data.events
-    .filter((e) => e.status !== "cancelled")
+    .filter((e) => e.status !== "cancelled" && e.groupNo !== null && allowed.has(e.groupNo))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
@@ -449,17 +491,38 @@ export async function cancelEvent(eventId: string): Promise<void> {
 // ── 홈 튜토리얼 ────────────────────────────────────────────
 
 /**
- * PIN 교체. sessionVersion 을 올려서 기존 로그인을 전부 끊는다 —
+ * 비밀번호 교체. sessionVersion 을 올려서 기존 로그인을 전부 끊는다 —
  * 다른 기기에 남아 있는 세션도 requireMember() 에서 걸러진다.
  */
-export async function changeMemberPin(memberId: string, pinHash: string): Promise<void> {
+export async function changeMemberPassword(
+  memberId: string,
+  expectedPasswordHash: string,
+  passwordHash: string,
+): Promise<boolean> {
   return withLock(async () => {
     const data = await read();
     const member = data.members.find((m) => m.id === memberId);
-    if (!member) return;
-    member.pinHash = pinHash;
+    if (!member || member.passwordHash !== expectedPasswordHash) return false;
+    member.passwordHash = passwordHash;
     member.sessionVersion += 1;
     await write(data);
+    return true;
+  });
+}
+
+/** 관리자가 비밀번호를 초기화한다. 기존 세션은 sessionVersion으로 모두 끊긴다. */
+export async function resetMemberPassword(
+  memberId: string,
+  passwordHash: string,
+): Promise<boolean> {
+  return withLock(async () => {
+    const data = await read();
+    const member = data.members.find((m) => m.id === memberId && m.isActive);
+    if (!member) return false;
+    member.passwordHash = passwordHash;
+    member.sessionVersion += 1;
+    await write(data);
+    return true;
   });
 }
 

@@ -72,12 +72,13 @@ function monthCalendar(offset: number): {
   return { label: `${year}년 ${month + 1}월`, cells };
 }
 
-export function EventCreateForm() {
+export function EventCreateForm({ groupNos }: { groupNos: number[] }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [title, setTitle] = useState("");
   // 연습 하나는 하루짜리다. 고르지 않았으면 빈 문자열.
   const [date, setDate] = useState("");
+  const [groupNo, setGroupNo] = useState<number | null>(groupNos.length === 1 ? groupNos[0] : null);
   const [durationMin, setDuration] = useState(DURATION_DEFAULT);
   /**
    * 방금 밀려난 값과 방향. 늘리면 아래에서 위로, 줄이면 위에서 아래로 굴러간다.
@@ -122,7 +123,7 @@ export function EventCreateForm() {
     e.preventDefault();
     setError("");
     start(async () => {
-      const res = await createMeetEvent({ title, dates: [date], durationMin });
+      const res = await createMeetEvent({ title, dates: [date], durationMin, groupNo });
       if (!res.ok) {
         setError(res.error);
         return;
@@ -134,6 +135,28 @@ export function EventCreateForm() {
 
   return (
     <form onSubmit={submit} className="space-y-6">
+      {groupNos.length > 1 ? (
+        <div>
+          <p className="mb-2 text-sm font-semibold text-fg-2">어느 조의 연습인가요?</p>
+          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-surface p-3">
+            {groupNos.map((no) => (
+              <button
+                key={no}
+                type="button"
+                onClick={() => setGroupNo(no)}
+                aria-pressed={groupNo === no}
+                className={`h-12 rounded-xl text-[15px] font-bold ${
+                  groupNo === no ? "bg-accent text-accent-fg" : "bg-surface-2 text-fg-2"
+                }`}
+              >
+                {no}조
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 px-1 text-[13px] text-muted">고른 조의 멤버에게만 일정이 보여요.</p>
+        </div>
+      ) : null}
+
       <Field label="연습 이름">
         <Input
           autoFocus
@@ -293,7 +316,7 @@ export function EventCreateForm() {
 
       <ErrorText>{error}</ErrorText>
 
-      <Button type="submit" full disabled={pending || !title.trim() || !date}>
+      <Button type="submit" full disabled={pending || !title.trim() || !date || groupNo === null}>
         {pending ? "만드는 중…" : "후보 시간 보기"}
       </Button>
     </form>

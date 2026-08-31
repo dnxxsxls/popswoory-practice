@@ -1,7 +1,7 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { readSession, type Session } from "./session";
-import { getMember, isInTutorial, type Member, type Schedule } from "./store";
+import { getMember, isInTutorial, type Member } from "./store";
 
 /**
  * 보호된 페이지 / 서버 액션의 첫 줄에서 호출한다.
@@ -54,15 +54,4 @@ export async function requireOnboarding(): Promise<{ session: Session; member: M
   if (!member) redirect("/join");
   if (!isInTutorial(member)) redirect("/");
   return { session, member };
-}
-
-/**
- * 지금 있어야 할 온보딩 단계의 경로. 각 단계 페이지가 이 값과 다르면 옮겨 보내
- * 주소를 직접 쳐서 순서를 건너뛰지 못하게 한다.
- */
-export function onboardingPath(member: Member, schedule: Schedule | null): string {
-  if (member.groupRole === null) return "/onboarding";
-  if (!schedule) return "/onboarding/timetable";
-  if (schedule.blocks.length === 0) return "/onboarding/review";
-  return "/onboarding/group";
 }
