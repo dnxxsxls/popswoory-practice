@@ -16,6 +16,7 @@ import {
 } from "@/components/home-dashboard";
 import { todayKst } from "@/lib/candidates";
 import { buildEventView } from "@/lib/event-view";
+import { GROUPS } from "@/lib/groups";
 import { AppShell } from "@/components/app-shell";
 
 export default async function HomePage() {
@@ -27,7 +28,9 @@ export default async function HomePage() {
     getActiveSchedule(me.memberId),
     listMembers(),
     listActiveSchedules(),
-    listEvents(member.groupNos),
+    listEvents(
+      member.role === "admin" ? GROUPS.map((group) => group.no) : member.groupNos,
+    ),
   ]);
   const scopedMembers = members.filter((candidate) =>
     candidate.groupNos.some((groupNo) => member.groupNos.includes(groupNo)),

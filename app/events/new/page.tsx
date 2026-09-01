@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireOnboarded } from "@/lib/guard";
 import { getMember } from "@/lib/store";
+import { GROUPS } from "@/lib/groups";
 import { AppShell } from "@/components/app-shell";
 import { EventCreateForm } from "@/components/event-create-form";
 
@@ -10,7 +11,10 @@ export default async function NewEventPage() {
   const member = await getMember(me.memberId);
   if (!member || member.groupNos.length === 0) notFound();
 
-  const groupNos = [...member.groupNos].sort((a, b) => a - b);
+  const groupNos =
+    member.role === "admin"
+      ? GROUPS.map((group) => group.no)
+      : [...member.groupNos].sort((a, b) => a - b);
   const onlyGroup = groupNos.length === 1 ? groupNos[0] : null;
 
   return (

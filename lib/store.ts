@@ -91,7 +91,10 @@ export type MeetEvent = {
 };
 
 export function canAccessEvent(member: Member, event: MeetEvent): boolean {
-  return event.groupNo !== null && member.groupNos.includes(event.groupNo);
+  return (
+    member.role === "admin" ||
+    (event.groupNo !== null && member.groupNos.includes(event.groupNo))
+  );
 }
 
 /** 후보 하나에 대한 멤버의 답. slotKey = `${date}T${startMin}` */
@@ -595,6 +598,29 @@ export async function resetMemberPassword(
     if (!member) return false;
     member.passwordHash = passwordHash;
     member.sessionVersion += 1;
+    await write(data);
+    return true;
+  });
+}
+
+/** 관리자가 계정을 비활성화한다. 기록은 남기고 로그인과 활성 시간표만 끊는다. */
+export async function deactivateMember(memberId: string): Promise<boolean> {
+  return withLock(async () => {
+    const data = await read();
+    const member = data.members.find((current) => current.id === memberId && current.isActive);
+    if (!member) return false;
+    if (
+      member.role === "admin" &&
+      data.members.filter((current) => current.isActive && current.role === "admin").length <= 1
+    ) {
+      return false;
+    }
+
+    member.isActive = false;
+    member.sessionVersion += 1;
+    for (const schedule of data.schedules) {
+      if (schedule.memberId === memberId) schedule.isActive = false;
+    }
     await write(data);
     return true;
   });

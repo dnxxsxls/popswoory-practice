@@ -53,8 +53,13 @@ export async function createMeetEvent(input: unknown): Promise<CreateResult> {
   }
 
   // 일반 조원은 클라이언트가 보낸 값과 무관하게 자신의 유일한 조로 고정한다.
-  const groupNo = member.groupRole === "member" ? member.groupNos[0] : parsed.data.groupNo;
-  if (!member.groupNos.includes(groupNo)) {
+  const groupNo =
+    member.role === "admin"
+      ? parsed.data.groupNo
+      : member.groupRole === "member"
+        ? member.groupNos[0]
+        : parsed.data.groupNo;
+  if (member.role !== "admin" && !member.groupNos.includes(groupNo)) {
     return { ok: false, error: "담당하고 있는 조의 일정만 만들 수 있어요." };
   }
 

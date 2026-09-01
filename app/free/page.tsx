@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireOnboarded } from "@/lib/guard";
 import { getMember, listActiveSchedules, listMembers } from "@/lib/store";
 import { buildFreeTable, type MemberSchedule } from "@/lib/free-time";
+import { GROUPS } from "@/lib/groups";
 import { AppShell } from "@/components/app-shell";
 import { FreeGroupTabs, type FreeGroupView } from "@/components/free-group-tabs";
 
@@ -15,7 +16,10 @@ export default async function FreePage() {
   if (!member || member.groupNos.length === 0) notFound();
 
   const byMember = new Map(schedules.map((schedule) => [schedule.memberId, schedule]));
-  const groupNos = [...member.groupNos].sort((a, b) => a - b);
+  const groupNos =
+    member.role === "admin"
+      ? GROUPS.map((group) => group.no)
+      : [...member.groupNos].sort((a, b) => a - b);
   const groups: FreeGroupView[] = groupNos.map((no) => {
     const groupMembers = members.filter((candidate) => candidate.groupNos.includes(no));
     const memberSchedules: MemberSchedule[] = groupMembers.map((candidate) => {

@@ -5,8 +5,9 @@ import { AppShell } from "@/components/app-shell";
 import { RosterRow, type RosterMember } from "@/components/group-roster";
 import { GroupTabs, type GroupRoster } from "@/components/group-tabs";
 import { PasswordResetButton } from "@/components/password-reset-button";
+import { MemberDeleteButton } from "@/components/member-delete-button";
 import { ProfileEdit } from "@/components/profile-edit";
-import { Card } from "@/components/ui";
+import { Badge, Card } from "@/components/ui";
 
 export default async function MembersPage() {
   const me = await requireOnboarded();
@@ -65,7 +66,10 @@ export default async function MembersPage() {
     >
       {/* 제목과 동작은 카드 바깥에 둔다 — 카드 안은 내용만. */}
       <div className="flex items-center justify-between gap-3 px-1">
-        <h2 className="text-[17px] font-bold">내 정보</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-[17px] font-bold">내 정보</h2>
+          {me.role === "admin" ? <Badge tone="accent">관리자</Badge> : null}
+        </div>
         <ProfileEdit
           displayName={mine.displayName}
           groupRole={mine.mentor ? "mentor" : "member"}
@@ -107,19 +111,26 @@ export default async function MembersPage() {
                         <p className="truncate text-[15px] font-bold">{member.displayName}</p>
                         <p className="truncate text-[13px] text-muted">@{member.loginId}</p>
                       </div>
-                      <PasswordResetButton
-                        memberId={member.id}
-                        displayName={member.displayName}
-                      />
+                      <div className="flex shrink-0 flex-col items-end gap-1.5">
+                        <PasswordResetButton
+                          memberId={member.id}
+                          displayName={member.displayName}
+                        />
+                        <MemberDeleteButton
+                          memberId={member.id}
+                          displayName={member.displayName}
+                        />
+                      </div>
                     </li>
                   ))}
               </ul>
             ) : (
-              <p className="text-[15px] text-muted">초기화할 다른 회원이 없어요.</p>
+              <p className="text-[15px] text-muted">관리할 다른 회원이 없어요.</p>
             )}
           </Card>
           <p className="px-1 text-[13px] leading-relaxed text-muted">
-            초기화한 회원에게 임시 비밀번호 0000을 알려주고, 로그인 후 변경하도록 안내해 주세요.
+            비밀번호 초기화 후에는 임시 비밀번호 0000을 안내해 주세요. 계정 삭제 시 로그인과 명단
+            노출이 즉시 중단되고 기존 기록은 보존됩니다.
           </p>
         </>
       ) : null}
