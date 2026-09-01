@@ -20,13 +20,14 @@ export default async function TimetablePage() {
     <AppShell title="내 시간표" subtitle="한 번 등록하면 계속 유지됩니다">
       {schedule ? (
         <TimetableView
+          memberId={me.memberId}
           registeredAt={formatDate(schedule.createdAt)}
           blocks={schedule.blocks}
           confirmed={schedule.status === "parsed"}
           hasImage={Boolean(schedule.imageFile)}
         />
       ) : (
-        <TimetableUploader mode="onboarding" />
+        <TimetableUploader memberId={me.memberId} mode="onboarding" />
       )}
     </AppShell>
   );

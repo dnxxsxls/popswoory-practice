@@ -40,9 +40,11 @@ const COPY: Record<Phase, { step: OnboardingStep; title: string; subtitle?: stri
 };
 
 export function OnboardingReview({
+  memberId,
   initial,
   hasImage,
 }: {
+  memberId: string;
   initial: ScheduleBlock[];
   hasImage: boolean;
 }) {
@@ -73,6 +75,7 @@ export function OnboardingReview({
       subtitle={subtitle}
     >
       <ScheduleReview
+        memberId={memberId}
         initial={initial}
         hasImage={hasImage}
         doneHref="/onboarding/group"

@@ -12,6 +12,10 @@ export default async function OnboardingReviewPage() {
   if (here !== "/onboarding/review" || !schedule) redirect(here);
 
   return (
-    <OnboardingReview initial={schedule.blocks} hasImage={Boolean(schedule.imageFile)} />
+    <OnboardingReview
+      memberId={member.id}
+      initial={schedule.blocks}
+      hasImage={Boolean(schedule.imageFile)}
+    />
   );
 }

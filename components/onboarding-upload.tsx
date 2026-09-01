@@ -15,7 +15,7 @@ const COPY = {
   crop: { title: "남길 영역을 정해주세요", subtitle: undefined },
 } as const;
 
-export function OnboardingUpload() {
+export function OnboardingUpload({ memberId }: { memberId: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [phase, setPhase] = useState<"upload" | "crop">("upload");
@@ -39,6 +39,7 @@ export function OnboardingUpload() {
       backDisabled={pending}
     >
       <TimetableUploader
+        memberId={memberId}
         mode="onboarding"
         reviewHref="/onboarding/review"
         onPhaseChange={setPhase}

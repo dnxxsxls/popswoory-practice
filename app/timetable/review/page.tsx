@@ -26,6 +26,7 @@ export default async function TimetableReviewPage() {
       }
     >
       <ScheduleReview
+        memberId={me.memberId}
         initial={schedule.blocks}
         hasImage={hasImage}
         initiallyConfirmed={alreadyConfirmed}

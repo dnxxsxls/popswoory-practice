@@ -11,5 +11,5 @@ export default async function OnboardingTimetablePage() {
   const here = onboardingPath(member, schedule);
   if (here !== "/onboarding/timetable") redirect(here);
 
-  return <OnboardingUpload />;
+  return <OnboardingUpload memberId={member.id} />;
 }

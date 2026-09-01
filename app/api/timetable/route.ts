@@ -16,8 +16,18 @@ export async function POST(request: Request) {
 
   const form = await request.formData();
   const file = form.get("file");
+  const expectedMemberId = form.get("memberId");
   const width = Number(form.get("width") ?? 0);
   const height = Number(form.get("height") ?? 0);
+
+  // 같은 브라우저의 탭은 로그인 쿠키를 공유한다. 화면을 연 계정과 현재 쿠키가
+  // 다르면 다른 회원의 시간표를 덮어쓰기 전에 요청을 중단한다.
+  if (expectedMemberId !== member.id) {
+    return NextResponse.json(
+      { error: "다른 탭에서 로그인 계정이 바뀌었어요. 이 탭을 새로고침한 뒤 다시 올려주세요." },
+      { status: 409 },
+    );
+  }
 
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "이미지가 없어요." }, { status: 400 });

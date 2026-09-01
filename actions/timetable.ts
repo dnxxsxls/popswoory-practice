@@ -15,9 +15,21 @@ export type AnalyzeResult =
   | { ok: true; blocks: VisionBlock[]; note: string }
   | { ok: false; message: string; canRetry: boolean };
 
+const memberIdSchema = z.string().uuid();
+const SESSION_CHANGED =
+  "다른 탭에서 로그인 계정이 바뀌었어요. 이 탭을 새로고침한 뒤 다시 시도해 주세요.";
+
+function matchesPageMember(memberId: string, expectedMemberId: unknown): boolean {
+  const parsed = memberIdSchema.safeParse(expectedMemberId);
+  return parsed.success && parsed.data === memberId;
+}
+
 /** 등록된 최신 시간표 이미지를 분석한다. 저장하지 않고 검토용 결과만 돌려준다. */
-export async function analyzeMyTimetable(): Promise<AnalyzeResult> {
+export async function analyzeMyTimetable(expectedMemberId: unknown): Promise<AnalyzeResult> {
   const me = await requireMember();
+  if (!matchesPageMember(me.memberId, expectedMemberId)) {
+    return { ok: false, message: SESSION_CHANGED, canRetry: false };
+  }
 
   const schedule = await getActiveSchedule(me.memberId);
   if (!schedule) return { ok: false, message: "등록된 시간표 이미지가 없어요.", canRetry: false };
@@ -50,9 +62,13 @@ const blockSchema = z
 
 /** 사람이 검토·수정한 결과를 확정 저장한다. */
 export async function saveMyTimetableBlocks(
+  expectedMemberId: unknown,
   blocks: unknown,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   const me = await requireMember();
+  if (!matchesPageMember(me.memberId, expectedMemberId)) {
+    return { ok: false, message: SESSION_CHANGED };
+  }
 
   const parsed = z.array(blockSchema).max(80).safeParse(blocks);
   if (!parsed.success) {
@@ -73,8 +89,13 @@ export async function saveMyTimetableBlocks(
 }
 
 /** 이미지 없이 직접 입력으로 시작한다. */
-export async function startManualTimetable(): Promise<{ ok: true }> {
+export async function startManualTimetable(
+  expectedMemberId: unknown,
+): Promise<{ ok: true } | { ok: false; message: string }> {
   const me = await requireMember();
+  if (!matchesPageMember(me.memberId, expectedMemberId)) {
+    return { ok: false, message: SESSION_CHANGED };
+  }
   await createManualSchedule(me.memberId);
   return { ok: true };
 }

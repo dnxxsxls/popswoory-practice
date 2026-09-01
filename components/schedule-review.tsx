@@ -27,6 +27,7 @@ function toEdit(blocks: Pick<ScheduleBlock, "weekday" | "startMin" | "endMin" | 
 }
 
 export function ScheduleReview({
+  memberId,
   initial,
   hasImage,
   doneHref,
@@ -35,6 +36,7 @@ export function ScheduleReview({
   showStepLabel = true,
   initiallyConfirmed = false,
 }: {
+  memberId: string;
   initial: ScheduleBlock[];
   hasImage: boolean;
   /** 지금 어느 단계인지 밖에 알린다 — 온보딩 진행바와 제목이 이 값을 따라간다 */
@@ -78,7 +80,7 @@ export function ScheduleReview({
     let cancelled = false;
 
     (async () => {
-      const res = await analyzeMyTimetable();
+      const res = await analyzeMyTimetable(memberId);
       if (cancelled) return;
       if (res.ok) {
         setBlocks(toEdit(res.blocks));
@@ -92,12 +94,13 @@ export function ScheduleReview({
     return () => {
       cancelled = true;
     };
-  }, [analyzing]);
+  }, [analyzing, memberId]);
 
   function save() {
     setError("");
     startSave(async () => {
       const res = await saveMyTimetableBlocks(
+        memberId,
         blocks.map(({ weekday, startMin, endMin, title, confidence, kind }) => ({
           weekday,
           startMin,
@@ -200,7 +203,7 @@ export function ScheduleReview({
       */}
       {failed ? (
         <>
-          <OriginalImage defaultOpen />
+          <OriginalImage memberId={memberId} defaultOpen />
 
           <div className="flex gap-3">
             {onBackFromFirst ? (
@@ -221,7 +224,7 @@ export function ScheduleReview({
       {!failed && step === "confirm" ? (
         <>
           {/* 원본을 위에 둬야 눈이 위아래로 오가며 비교하기 쉽다 */}
-          {hasImage ? <OriginalImage /> : null}
+          {hasImage ? <OriginalImage memberId={memberId} /> : null}
 
           <EditableScheduleGrid
             blocks={blocks}

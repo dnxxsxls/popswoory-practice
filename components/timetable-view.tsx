@@ -7,22 +7,25 @@ import { TimetableUploader } from "./timetable-uploader";
 import { ScheduleGrid, type GridBlock } from "./schedule-grid";
 
 export function TimetableView({
+  memberId,
   registeredAt,
   blocks,
   confirmed,
   hasImage,
 }: {
+  memberId: string;
   registeredAt: string;
   blocks: GridBlock[];
   confirmed: boolean;
   hasImage: boolean;
 }) {
   const [replacing, setReplacing] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
 
   if (replacing) {
     return (
       <div className="space-y-4">
-        <TimetableUploader mode="replace" />
+        <TimetableUploader memberId={memberId} mode="replace" />
         <Button variant="ghost" full onClick={() => setReplacing(false)}>
           취소
         </Button>
@@ -73,8 +76,19 @@ export function TimetableView({
         <>
           {hasImage ? (
             <div className="overflow-hidden rounded-2xl bg-surface">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/api/timetable/image" alt="등록된 내 시간표" className="block w-full" />
+              {imageFailed ? (
+                <p className="p-5 text-[14px] leading-relaxed text-danger">
+                  로그인 계정이 바뀌었어요. 이 탭을 새로고침해 주세요.
+                </p>
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`/api/timetable/image?memberId=${encodeURIComponent(memberId)}`}
+                  alt="등록된 내 시간표"
+                  onError={() => setImageFailed(true)}
+                  className="block w-full"
+                />
+              )}
             </div>
           ) : null}
           <p className="px-1 text-[13px] text-muted">아직 시간표 확인을 마치지 않았어요.</p>

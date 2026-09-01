@@ -18,10 +18,12 @@ const INITIAL: Rect = { x: 0, y: 0, w: 1, h: 1 };
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 export function TimetableUploader({
+  memberId,
   mode,
   reviewHref = "/timetable/review",
   onPhaseChange,
 }: {
+  memberId: string;
   mode: "onboarding" | "replace";
   /** 업로드·직접입력 후 갈 확인 화면. 온보딩은 자기 경로를 넘긴다. */
   reviewHref?: string;
@@ -164,6 +166,7 @@ export function TimetableUploader({
 
       const form = new FormData();
       form.append("file", blob, "timetable.jpg");
+      form.append("memberId", memberId);
       form.append("width", String(outW));
       form.append("height", String(outH));
 
@@ -230,7 +233,12 @@ export function TimetableUploader({
           disabled={startingManual}
           onClick={() =>
             startManual(async () => {
-              await startManualTimetable();
+              setError("");
+              const result = await startManualTimetable(memberId);
+              if (!result.ok) {
+                setError(result.message);
+                return;
+              }
               router.replace(reviewHref);
               router.refresh();
             })

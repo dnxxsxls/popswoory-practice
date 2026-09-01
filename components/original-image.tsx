@@ -10,9 +10,16 @@ import { Skeleton } from "./ui";
  * 접혀 있는 동안에도 이미지를 미리 받아둔다 — 펼친 뒤에 받기 시작하면 한참
  * 빈 화면이 보인다. 아직 도착하지 않았으면 자리만 잡아두고 뼈대를 보여준다.
  */
-export function OriginalImage({ defaultOpen = false }: { defaultOpen?: boolean }) {
+export function OriginalImage({
+  memberId,
+  defaultOpen = false,
+}: {
+  memberId: string;
+  defaultOpen?: boolean;
+}) {
   const [open, setOpen] = useState(defaultOpen);
   const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   return (
     <div className="overflow-hidden rounded-2xl bg-surface">
@@ -44,13 +51,19 @@ export function OriginalImage({ defaultOpen = false }: { defaultOpen?: boolean }
 
       {/* 펼치기 전에도 내려받아 둔다. 화면에서만 감춘다. */}
       <div className={open ? "block" : "hidden"}>
-        {open && !loaded ? <Skeleton className="h-64 w-full rounded-none" /> : null}
+        {open && !loaded && !failed ? <Skeleton className="h-64 w-full rounded-none" /> : null}
+        {failed ? (
+          <p className="px-5 pb-5 text-[14px] leading-relaxed text-danger">
+            로그인 계정이 바뀌었어요. 이 탭을 새로고침해 주세요.
+          </p>
+        ) : null}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/api/timetable/image"
+          src={`/api/timetable/image?memberId=${encodeURIComponent(memberId)}`}
           alt="올린 시간표 원본"
           onLoad={() => setLoaded(true)}
-          className={`block w-full ${loaded ? "" : "hidden"}`}
+          onError={() => setFailed(true)}
+          className={`block w-full ${loaded && !failed ? "" : "hidden"}`}
         />
       </div>
     </div>
